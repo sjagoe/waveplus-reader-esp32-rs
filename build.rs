@@ -4,6 +4,8 @@ pub struct Config {
     wifi_ssid: &'static str,
     #[default("")]
     wifi_psk: &'static str,
+    #[default("")]
+    waveplus_serial: &'static str,
 }
 
 fn main() {

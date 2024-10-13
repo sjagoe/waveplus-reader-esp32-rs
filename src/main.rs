@@ -4,10 +4,12 @@ use esp_idf_svc::{
     hal::prelude::Peripherals,
 };
 
+mod ble;
 mod rgbled;
 mod wifi;
 mod http;
 
+use ble::{read_waveplus, get_waveplus};
 use rgbled::{RGB8, WS2812RMT};
 use wifi::wifi;
 use http::get;
@@ -20,6 +22,8 @@ pub struct Config {
     wifi_ssid: &'static str,
     #[default("")]
     wifi_psk: &'static str,
+    #[default("")]
+    waveplus_serial: &'static str,
 }
 
 fn main() -> Result<()> {
@@ -44,21 +48,26 @@ fn main() -> Result<()> {
 
     log::info!("SSID: {:?}", app_config.wifi_ssid);
 
-    let _wifi = match wifi(
-        app_config.wifi_ssid,
-        app_config.wifi_psk,
-        peripherals.modem,
-        sysloop,
-    ) {
-        Ok(inner) => inner,
-        Err(err) => {
-            // Red!
-            led.set_pixel(RGB8::new(50, 0, 0))?;
-            bail!("Could not connect to Wi-Fi network: {:?}", err)
-        }
-    };
+    // let _wifi = match wifi(
+    //     app_config.wifi_ssid,
+    //     app_config.wifi_psk,
+    //     peripherals.modem,
+    //     sysloop,
+    // ) {
+    //     Ok(inner) => inner,
+    //     Err(err) => {
+    //         // Red!
+    //         led.set_pixel(RGB8::new(50, 0, 0))?;
+    //         bail!("Could not connect to Wi-Fi network: {:?}", err)
+    //     }
+    // };
 
-    get("https://espressif.com/")?;
+    // get("https://espressif.com/")?;
+
+    let serial: u64 = app_config.waveplus_serial.parse()?;
+    get_waveplus(&serial)?;
+    // log::info!("got waveplus {:?}", waveplus);
+    // read_waveplus(waveplus)?;
 
     loop {
         // Blue!
