@@ -8,6 +8,17 @@ use esp_idf_svc::hal::{
 use log::*;
 use bincode::Options;
 
+use crate::measurement::{WavePlusMeasurement, WavePlusRawMeasurement};
+
+macro_rules! bincode_options {
+    () => {
+        bincode::DefaultOptions::new()
+        .with_little_endian()
+        .with_no_limit()
+        .with_fixint_encoding()
+    };
+}
+
 pub fn scan_ble() -> anyhow::Result<()> {
     block_on(async {
         let ble_device = BLEDevice::take();
@@ -26,64 +37,26 @@ pub fn scan_ble() -> anyhow::Result<()> {
     })
 }
 
-#[derive(Debug)]
-pub struct WavePlusMeasurement {
-    version: u8,
-    humidity: f64,
-    radon_short: Option<f64>,
-    radon_long: Option<f64>,
-    temperature: f64,
-    pressure: f64,
-    co2: f64,
-    voc: f64,
-}
-
-fn parse_radon(value: u16) -> Option<f64> {
-    if value > 16383 {
-        return None;
-    }
-    Some(f64::from(value))
-}
-
 fn parse_value(value: &Vec<u8>) -> Result<()> {
     if value.len() != 20 {
         bail!("Unexpected BLE packet {:?}", value);
     }
     log::info!("can read {:?}", value);
-    let bincode_options = bincode::DefaultOptions::new()
-        .with_little_endian()
-        .with_no_limit()
-        .with_fixint_encoding() ;
 
     // <BBBBHHHHHHHH
     // [1, 96, 4, 0, 52, 0, 52, 0, 84, 7, 166, 196, 154, 2, 52, 0, 0, 0, 68, 7]
 
-    let radon_short = parse_radon(bincode_options.deserialize::<u16>(&value[4 .. 6]).unwrap());
-    let radon_long = parse_radon(bincode_options.deserialize::<u16>(&value[6 .. 8]).unwrap());
+    let raw: WavePlusRawMeasurement;
+    raw = bincode_options!().deserialize(&value).unwrap();
 
-    let measurement = WavePlusMeasurement {
-        version: bincode_options.deserialize::<u8>(&value[0 .. 1]).unwrap(),
-        humidity: f64::from(bincode_options.deserialize::<u8>(&value[1 .. 2]).unwrap()) / 2.0,
-        // ignore [2 .. 3], [3 .. 4]
-        radon_short,
-        radon_long,
-        temperature: f64::from(bincode_options.deserialize::<u16>(&value[8 .. 10]).unwrap()) / 100.0,
-        pressure: f64::from(bincode_options.deserialize::<u16>(&value[10 .. 12]).unwrap()) / 50.0,
-        co2: f64::from(bincode_options.deserialize::<u16>(&value[12 .. 14]).unwrap()),
-        voc: f64::from(bincode_options.deserialize::<u16>(&value[14 .. 16]).unwrap()),
-    };
+    let measurement = WavePlusMeasurement::from(raw);;
 
-    log::info!("version: {:?}", measurement);
+    log::info!("measurement: {:?}", measurement);
     Ok(())
 }
 
 
 pub fn get_waveplus(serial_number: &u64) -> Result<()> {
-    let bincode_options = bincode::DefaultOptions::new()
-        .with_little_endian()
-        .with_no_limit()
-        .with_fixint_encoding() ;
-
     // let peripherals = Peripherals::take()?;
     // let mut timer = TimerDriver::new(peripherals.timer00, &TimerConfig::new())?;
     block_on(async {
@@ -103,7 +76,7 @@ pub fn get_waveplus(serial_number: &u64) -> Result<()> {
 
                     // let mfg1: u16 = unpack_u16(&mfg_data[0 .. 2]).unwrap();
 
-                    let mfg: u16 = bincode_options.deserialize(&mfg_data[0 .. 2]).unwrap();
+                    let mfg: u16 = bincode_options!().deserialize(&mfg_data[0 .. 2]).unwrap();
 
                     if mfg != 0x0334 {
                         return false;

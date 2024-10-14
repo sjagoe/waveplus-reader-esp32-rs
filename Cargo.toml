@@ -36,6 +36,7 @@ rgb         = "0.8.29"
 embedded-svc = "0.28.0"
 esp32-nimble = "0.7.0"
 bincode    = "1.3.3"
+serde = { version = "1.0.210", features = ["derive"] }
 
 [build-dependencies]
 embuild = "0.32.0"

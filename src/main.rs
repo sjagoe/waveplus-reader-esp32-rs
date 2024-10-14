@@ -8,6 +8,7 @@ mod ble;
 mod rgbled;
 mod wifi;
 mod http;
+mod measurement;
 
 use ble::{read_waveplus, get_waveplus};
 use rgbled::{RGB8, WS2812RMT};
