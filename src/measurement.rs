@@ -3,7 +3,6 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct WavePlusManufacturerInfo {
-    pub manufacturer: u16,
     pub serial_number: u32,
     pub unknown: u16,
 }

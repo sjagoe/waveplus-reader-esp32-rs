@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use esp32_nimble::{uuid128, BLEAddress, BLEClient, BLEDevice, BLEAdvertisedDevice};
+use esp32_nimble::{uuid128, BLEAddress, BLEClient, BLEDevice, BLEAdvertisedDevice, BLEScan};
 use esp_idf_svc::hal::task::block_on;
 use log::*;
 use bincode::Options;
@@ -36,40 +36,31 @@ fn parse_value(value: &Vec<u8>) -> Result<WavePlusMeasurement> {
 
 async fn read_waveplus_once(serial_number: &u32) -> Result<WavePlusMeasurement> {
     let ble_device = BLEDevice::take();
-    let ble_scan = ble_device.get_scan();
+    let mut ble_scan = BLEScan::new();
     let device = ble_scan
         .active_scan(true)
         .interval(100)
         .window(99)
-        .find_device(10000, |device| -> bool {
-            if let Some(mfg_data) = device.get_manufacture_data() {
-                if mfg_data.len() != 8 {
-                    return false;
+        .start(ble_device, 10000, |device, data| {
+            if let Some(manufacture_data) = data.manufacture_data() {
+                if manufacture_data.company_identifier != 0x0334 {
+                    return None::<BLEAdvertisedDevice>;
                 }
-
                 let mfg: WavePlusManufacturerInfo;
-                mfg = bincode_options!().deserialize(&mfg_data).unwrap();
-
-                info!("Found potential device: {:?}", mfg);
-
-                // Magic constant to identify that this is a WavePlus device
-                if mfg.manufacturer != 0x0334 {
-                    return false;
+                mfg = bincode_options!().deserialize(&manufacture_data.payload).unwrap();
+                if mfg.serial_number == *serial_number {
+                    return Some(*device);
                 }
-
-                mfg.serial_number == *serial_number
-            } else {
-                false
             }
-        })
-        .await?;
+            None::<BLEAdvertisedDevice>
+        }).await?;
 
     if let Some(waveplus) = device {
         let mut client = BLEClient::new();
         client.on_connect(|client| {
             client.update_conn_params(120, 120, 0, 60).unwrap();
         });
-        client.connect(waveplus.addr()).await?;
+        client.connect(&waveplus.addr()).await?;
 
         let mut iter = client.get_services().await?;
 
