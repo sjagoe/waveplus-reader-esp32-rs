@@ -10,7 +10,7 @@ mod wifi;
 mod http;
 mod measurement;
 
-use ble::{read_waveplus, get_waveplus};
+use ble::read_waveplus;
 use rgbled::{RGB8, WS2812RMT};
 use wifi::wifi;
 use http::get;
@@ -66,16 +66,13 @@ fn main() -> Result<()> {
     // get("https://espressif.com/")?;
 
     let serial: u32 = app_config.waveplus_serial.parse()?;
-    get_waveplus(&serial)?;
-    // log::info!("got waveplus {:?}", waveplus);
-    // read_waveplus(waveplus)?;
 
     loop {
         // Blue!
         led.set_pixel(RGB8::new(0, 0, 50))?;
-        // Wait...
-        std::thread::sleep(std::time::Duration::from_secs(1));
-        log::info!("Hello, world!");
+        let measurement = read_waveplus(&serial)?;
+
+        println!("Received measurement {:?}", measurement);
 
         // Green!
         led.set_pixel(RGB8::new(0, 50, 0))?;
