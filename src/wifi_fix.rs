@@ -1,5 +1,4 @@
-use esp_idf_svc::wifi::{BlockingWifi, EspWifi} ;
-
+use esp_idf_svc::wifi::{BlockingWifi, EspWifi};
 
 pub trait WifiConnectFix {
     fn connect_with_retry(&mut self) -> anyhow::Result<()>;

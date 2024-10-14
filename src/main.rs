@@ -1,25 +1,22 @@
 use anyhow::{bail, Result};
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
-    wifi::{EspWifi, WifiEvent},
-    hal::{
-        prelude::Peripherals,
-        sys::esp_restart,
-    },
+    hal::{prelude::Peripherals, sys::esp_restart},
     nvs::EspDefaultNvsPartition,
+    wifi::{EspWifi, WifiEvent},
 };
 
 mod ble;
+mod http;
+mod measurement;
 mod rgbled;
 mod wifi;
 mod wifi_fix;
-mod http;
-mod measurement;
 
 use ble::read_waveplus;
+use http::send_measurement;
 use rgbled::{RGB8, WS2812RMT};
 use wifi::connect_wifi;
-use http::send_measurement;
 
 /// This configuration is picked up at compile time by `build.rs` from the
 /// file `cfg.toml`.
@@ -65,7 +62,11 @@ fn main() -> Result<()> {
 
     log::info!("SSID: {:?}", app_config.wifi_ssid);
 
-    let mut esp_wifi = EspWifi::new(peripherals.modem, sysloop.clone(), Some(nvs_default_partition))?;
+    let mut esp_wifi = EspWifi::new(
+        peripherals.modem,
+        sysloop.clone(),
+        Some(nvs_default_partition),
+    )?;
     let _wifi_event_sub = sysloop.subscribe::<WifiEvent, _>(move |event| {
         log::warn!("Received wifi event {:?}", event);
     })?;
@@ -90,7 +91,11 @@ fn main() -> Result<()> {
 
         println!("Received measurement {:?}", measurement);
 
-        if !app_config.server.is_empty() && send_measurement(app_config.server, &measurement).err().is_some() {
+        if !app_config.server.is_empty()
+            && send_measurement(app_config.server, &measurement)
+                .err()
+                .is_some()
+        {
             log::error!("wifi: {:?}", esp_wifi.is_connected());
             led.set_pixel(RGB8::new(50, 0, 0))?;
             let error = connect_wifi(
@@ -103,7 +108,10 @@ fn main() -> Result<()> {
                 log::error!("Could not connect to Wi-Fi network: {:?}", error);
                 unsafe { esp_restart() };
             };
-            if send_measurement(app_config.server, &measurement).err().is_some() {
+            if send_measurement(app_config.server, &measurement)
+                .err()
+                .is_some()
+            {
                 log::error!("Failed to send measurement after reconnect to wifi");
             }
         }
@@ -111,6 +119,8 @@ fn main() -> Result<()> {
         led.set_pixel(RGB8::new(0, 50, 0))?;
 
         // Wait...
-        std::thread::sleep(std::time::Duration::from_secs(app_config.read_interval.into()));
+        std::thread::sleep(std::time::Duration::from_secs(
+            app_config.read_interval.into(),
+        ));
     }
 }

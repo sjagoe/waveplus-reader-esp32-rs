@@ -1,16 +1,16 @@
 use anyhow::{anyhow, Result};
-use esp32_nimble::{uuid128, BLEClient, BLEDevice, BLEAdvertisedDevice, BLEScan};
-use esp_idf_svc::hal::task::block_on;
 use bincode::Options;
+use esp32_nimble::{uuid128, BLEAdvertisedDevice, BLEClient, BLEDevice, BLEScan};
+use esp_idf_svc::hal::task::block_on;
 
 use crate::measurement::{WavePlusManufacturerInfo, WavePlusMeasurement, WavePlusRawMeasurement};
 
 macro_rules! bincode_options {
     () => {
         bincode::DefaultOptions::new()
-        .with_little_endian()
-        .with_no_limit()
-        .with_fixint_encoding()
+            .with_little_endian()
+            .with_no_limit()
+            .with_fixint_encoding()
     };
 }
 
@@ -31,7 +31,6 @@ fn parse_value(value: &Vec<u8>) -> Result<WavePlusMeasurement> {
     Ok(measurement)
 }
 
-
 async fn read_waveplus_once(serial_number: &u32) -> Result<WavePlusMeasurement> {
     let ble_device = BLEDevice::take();
     let mut ble_scan = BLEScan::new();
@@ -44,13 +43,16 @@ async fn read_waveplus_once(serial_number: &u32) -> Result<WavePlusMeasurement> 
                 if manufacture_data.company_identifier != 0x0334 {
                     return None::<BLEAdvertisedDevice>;
                 }
-                let mfg: WavePlusManufacturerInfo = bincode_options!().deserialize(manufacture_data.payload).unwrap();
+                let mfg: WavePlusManufacturerInfo = bincode_options!()
+                    .deserialize(manufacture_data.payload)
+                    .unwrap();
                 if mfg.serial_number == *serial_number {
                     return Some(*device);
                 }
             }
             None::<BLEAdvertisedDevice>
-        }).await?;
+        })
+        .await?;
 
     if let Some(waveplus) = device {
         let mut client = BLEClient::new();
@@ -62,13 +64,9 @@ async fn read_waveplus_once(serial_number: &u32) -> Result<WavePlusMeasurement> 
         let service_uuid = uuid128!("b42e1c08-ade7-11e4-89d3-123b93f75cba");
         let characteristic_uuid = uuid128!("b42e2a68-ade7-11e4-89d3-123b93f75cba");
 
-        let service = client
-            .get_service(service_uuid)
-            .await?;
+        let service = client.get_service(service_uuid).await?;
 
-        let characteristic = service
-            .get_characteristic(characteristic_uuid)
-            .await?;
+        let characteristic = service.get_characteristic(characteristic_uuid).await?;
 
         if !characteristic.can_read() {
             ::log::error!("characteristic can't read: {}", characteristic);
@@ -88,7 +86,6 @@ async fn read_waveplus_once(serial_number: &u32) -> Result<WavePlusMeasurement> 
         Err(anyhow!("Could not find device"))
     }
 }
-
 
 pub fn read_waveplus(serial_number: &u32) -> Result<WavePlusMeasurement> {
     block_on(async {

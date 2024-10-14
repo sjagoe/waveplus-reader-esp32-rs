@@ -4,9 +4,7 @@ use embedded_svc::{
     http::{client::Client, Method},
     io::Read,
 };
-use esp_idf_svc::{
-    http::client::{Configuration, EspHttpConnection},
-};
+use esp_idf_svc::http::client::{Configuration, EspHttpConnection};
 
 use crate::measurement::WavePlusMeasurement;
 
