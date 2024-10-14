@@ -1,57 +1,18 @@
 use anyhow::{bail, Result};
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
-    hal::peripheral,
     wifi::{AuthMethod, BlockingWifi, ClientConfiguration, Configuration, EspWifi},
 };
 use log::info;
 
+use crate::wifi_fix::WifiConnectFix;
 
-pub trait WifiConnectFix {
-    fn connect_with_retry(&mut self) -> anyhow::Result<()>;
-}
-
-pub fn sleep_ms(ms: u64) {
-    std::thread::sleep(std::time::Duration::from_millis(ms));
-}
-
-impl WifiConnectFix for BlockingWifi<&mut EspWifi<'_>> {
-    fn connect_with_retry(&mut self) -> anyhow::Result<()> {
-        let mut retry_delay_ms = 1_000;
-        loop {
-            info!("Connecting wifi...");
-            match self.connect() {
-                Ok(()) => break,
-                Err(e) => {
-                    log::warn!(
-                        "Wifi connect failed, reason {}, retrying in {}s",
-                        e,
-                        retry_delay_ms / 1000
-                    );
-                    sleep_ms(retry_delay_ms);
-
-                    // increase the delay exponentially, but cap it at 10s
-                    retry_delay_ms = std::cmp::min(retry_delay_ms * 2, 10_000);
-
-                    self.stop()?;
-                    self.start()?;
-                }
-            }
-        }
-
-        info!("Waiting for DHCP lease...");
-
-        self.wait_netif_up()?;
-        Ok(())
-    }
-}
-
-pub fn wifi(
+pub fn connect_wifi(
     ssid: &str,
     pass: &str,
-    modem: impl peripheral::Peripheral<P = esp_idf_svc::hal::modem::Modem> + 'static,
+    esp_wifi: &mut EspWifi,
     sysloop: EspSystemEventLoop,
-) -> Result<Box<EspWifi<'static>>> {
+) -> Result<()> {
     let mut auth_method = AuthMethod::WPA2Personal;
     if ssid.is_empty() {
         bail!("Missing WiFi name")
@@ -60,14 +21,13 @@ pub fn wifi(
         auth_method = AuthMethod::None;
         info!("Wifi password is empty");
     }
-    let mut esp_wifi = EspWifi::new(modem, sysloop.clone(), None)?;
-
-    let mut wifi = BlockingWifi::wrap(&mut esp_wifi, sysloop)?;
+    let mut wifi = BlockingWifi::wrap(esp_wifi, sysloop.clone())?;
 
     wifi.set_configuration(&Configuration::Client(ClientConfiguration::default()))?;
 
     info!("Starting wifi...");
 
+    wifi.stop()?;
     wifi.start()?;
 
     info!("Scanning...");
@@ -110,5 +70,5 @@ pub fn wifi(
 
     info!("Wifi DHCP info: {:?}", ip_info);
 
-    Ok(Box::new(esp_wifi))
+    Ok(())
 }
