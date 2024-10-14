@@ -13,5 +13,7 @@ pub struct Config {
 }
 
 fn main() {
+    let _app_config = CONFIG;
+
     embuild::espidf::sysenv::output();
 }
