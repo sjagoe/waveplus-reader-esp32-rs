@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use esp32_nimble::{uuid128, BLEAddress, BLEClient, BLEDevice, BLEAdvertisedDevice, BLEScan};
+use esp32_nimble::{uuid128, BLEClient, BLEDevice, BLEAdvertisedDevice, BLEScan};
 use esp_idf_svc::hal::task::block_on;
 use log::*;
 use bincode::Options;
@@ -27,7 +27,7 @@ fn parse_value(value: &Vec<u8>) -> Result<WavePlusMeasurement> {
     let raw: WavePlusRawMeasurement;
     raw = bincode_options!().deserialize(&value).unwrap();
 
-    let measurement = WavePlusMeasurement::from(raw);;
+    let measurement = WavePlusMeasurement::from(raw);
 
     log::info!("measurement: {:?}", measurement);
     Ok(measurement)
