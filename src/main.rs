@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
-    wifi::EspWifi,
+    wifi::{EspWifi, WifiEvent},
     hal::{
         prelude::Peripherals,
         sys::esp_restart,
@@ -90,23 +90,21 @@ fn main() -> Result<()> {
 
         println!("Received measurement {:?}", measurement);
 
-        if app_config.server != "" {
-            if let Some(_) = send_measurement(app_config.server, &measurement).err() {
-                log::error!("wifi: {:?}", esp_wifi.is_connected());
-                led.set_pixel(RGB8::new(50, 0, 0))?;
-                let error = connect_wifi(
-                    app_config.wifi_ssid,
-                    app_config.wifi_psk,
-                    &mut esp_wifi,
-                    sysloop.clone(),
-                );
-                if let Some(error) = error.err() {
-                    log::error!("Could not connect to Wi-Fi network: {:?}", error);
-                    unsafe { esp_restart() };
-                };
-                if let Some(_) = send_measurement(app_config.server, &measurement).err() {
-                    log::error!("Failed to send measurement after reconnect to wifi");
-                }
+        if !app_config.server.is_empty() && send_measurement(app_config.server, &measurement).err().is_some() {
+            log::error!("wifi: {:?}", esp_wifi.is_connected());
+            led.set_pixel(RGB8::new(50, 0, 0))?;
+            let error = connect_wifi(
+                app_config.wifi_ssid,
+                app_config.wifi_psk,
+                &mut esp_wifi,
+                sysloop.clone(),
+            );
+            if let Some(error) = error.err() {
+                log::error!("Could not connect to Wi-Fi network: {:?}", error);
+                unsafe { esp_restart() };
+            };
+            if send_measurement(app_config.server, &measurement).err().is_some() {
+                log::error!("Failed to send measurement after reconnect to wifi");
             }
         }
         // Green!

@@ -23,8 +23,7 @@ fn parse_value(value: &Vec<u8>) -> Result<WavePlusMeasurement> {
     // <BBBBHHHHHHHH
     // [1, 96, 4, 0, 52, 0, 52, 0, 84, 7, 166, 196, 154, 2, 52, 0, 0, 0, 68, 7]
 
-    let raw: WavePlusRawMeasurement;
-    raw = bincode_options!().deserialize(&value).unwrap();
+    let raw: WavePlusRawMeasurement = bincode_options!().deserialize(value).unwrap();
 
     let measurement = WavePlusMeasurement::from(raw);
 
@@ -45,8 +44,7 @@ async fn read_waveplus_once(serial_number: &u32) -> Result<WavePlusMeasurement> 
                 if manufacture_data.company_identifier != 0x0334 {
                     return None::<BLEAdvertisedDevice>;
                 }
-                let mfg: WavePlusManufacturerInfo;
-                mfg = bincode_options!().deserialize(&manufacture_data.payload).unwrap();
+                let mfg: WavePlusManufacturerInfo = bincode_options!().deserialize(manufacture_data.payload).unwrap();
                 if mfg.serial_number == *serial_number {
                     return Some(*device);
                 }
