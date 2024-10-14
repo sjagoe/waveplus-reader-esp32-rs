@@ -1,10 +1,6 @@
 use anyhow::{bail, Result};
 use esp32_nimble::{uuid128, BLEAddress, BLEClient, BLEDevice, BLEAdvertisedDevice};
-use esp_idf_svc::hal::{
-  prelude::Peripherals,
-  task::block_on,
-  timer::{TimerConfig, TimerDriver},
-};
+use esp_idf_svc::hal::task::block_on;
 use log::*;
 use bincode::Options;
 
@@ -57,8 +53,6 @@ fn parse_value(value: &Vec<u8>) -> Result<()> {
 
 
 pub fn get_waveplus(serial_number: &u64) -> Result<()> {
-    // let peripherals = Peripherals::take()?;
-    // let mut timer = TimerDriver::new(peripherals.timer00, &TimerConfig::new())?;
     block_on(async {
         let ble_device = BLEDevice::take();
         let ble_scan = ble_device.get_scan();
@@ -68,16 +62,13 @@ pub fn get_waveplus(serial_number: &u64) -> Result<()> {
             .window(99)
             .find_device(10000, |device| -> bool {
                 if let Some(mfg_data) = device.get_manufacture_data() {
-                    if mfg_data.len() < 6 {
+                    if mfg_data.len() != 6 {
                         return false;
                     }
 
-                    // let mfg: u16 = u16::from(mfg_data[1]) << 8_u8 | u16::from(mfg_data[0]);
-
-                    // let mfg1: u16 = unpack_u16(&mfg_data[0 .. 2]).unwrap();
-
                     let mfg: u16 = bincode_options!().deserialize(&mfg_data[0 .. 2]).unwrap();
 
+                    // Magic constant to identify that this is a WavePlus device
                     if mfg != 0x0334 {
                         return false;
                     }
