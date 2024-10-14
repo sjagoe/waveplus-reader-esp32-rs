@@ -6,6 +6,46 @@ use esp_idf_svc::{
 };
 use log::info;
 
+
+pub trait WifiConnectFix {
+    fn connect_with_retry(&mut self) -> anyhow::Result<()>;
+}
+
+pub fn sleep_ms(ms: u64) {
+    std::thread::sleep(std::time::Duration::from_millis(ms));
+}
+
+impl WifiConnectFix for BlockingWifi<&mut EspWifi<'_>> {
+    fn connect_with_retry(&mut self) -> anyhow::Result<()> {
+        let mut retry_delay_ms = 1_000;
+        loop {
+            info!("Connecting wifi...");
+            match self.connect() {
+                Ok(()) => break,
+                Err(e) => {
+                    log::warn!(
+                        "Wifi connect failed, reason {}, retrying in {}s",
+                        e,
+                        retry_delay_ms / 1000
+                    );
+                    sleep_ms(retry_delay_ms);
+
+                    // increase the delay exponentially, but cap it at 10s
+                    retry_delay_ms = std::cmp::min(retry_delay_ms * 2, 10_000);
+
+                    self.stop()?;
+                    self.start()?;
+                }
+            }
+        }
+
+        info!("Waiting for DHCP lease...");
+
+        self.wait_netif_up()?;
+        Ok(())
+    }
+}
+
 pub fn wifi(
     ssid: &str,
     pass: &str,
@@ -62,13 +102,9 @@ pub fn wifi(
         ..Default::default()
     }))?;
 
-    info!("Connecting wifi...");
+    wifi.start()?;
 
-    wifi.connect()?;
-
-    info!("Waiting for DHCP lease...");
-
-    wifi.wait_netif_up()?;
+    wifi.connect_with_retry()?;
 
     let ip_info = wifi.wifi().sta_netif().get_ip_info()?;
 
