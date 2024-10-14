@@ -4,7 +4,7 @@ use esp_idf_svc::hal::task::block_on;
 use log::*;
 use bincode::Options;
 
-use crate::measurement::{WavePlusMeasurement, WavePlusRawMeasurement};
+use crate::measurement::{WavePlusManufacturerInfo, WavePlusMeasurement, WavePlusRawMeasurement};
 
 macro_rules! bincode_options {
     () => {
@@ -52,7 +52,7 @@ fn parse_value(value: &Vec<u8>) -> Result<()> {
 }
 
 
-pub fn get_waveplus(serial_number: &u64) -> Result<()> {
+pub fn get_waveplus(serial_number: &u32) -> Result<()> {
     block_on(async {
         let ble_device = BLEDevice::take();
         let ble_scan = ble_device.get_scan();
@@ -62,20 +62,21 @@ pub fn get_waveplus(serial_number: &u64) -> Result<()> {
             .window(99)
             .find_device(10000, |device| -> bool {
                 if let Some(mfg_data) = device.get_manufacture_data() {
-                    if mfg_data.len() != 6 {
+                    if mfg_data.len() != 8 {
                         return false;
                     }
 
-                    let mfg: u16 = bincode_options!().deserialize(&mfg_data[0 .. 2]).unwrap();
+                    let mfg: WavePlusManufacturerInfo;
+                    mfg = bincode_options!().deserialize(&mfg_data).unwrap();
+
+                    info!("Found potential device: {:?}", mfg);
 
                     // Magic constant to identify that this is a WavePlus device
-                    if mfg != 0x0334 {
+                    if mfg.manufacturer != 0x0334 {
                         return false;
                     }
 
-                    let serial: u64 = u64::from(mfg_data[2]) | u64::from(mfg_data[3]) << 8 | u64::from(mfg_data[4]) << 16 | u64::from(mfg_data[5]) << 24;
-                    info!("Device? {:?} {:?} == {:?}", device, serial, serial_number);
-                    serial == *serial_number
+                    mfg.serial_number == *serial_number
                 } else {
                     false
                 }

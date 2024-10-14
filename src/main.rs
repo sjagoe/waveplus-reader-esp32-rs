@@ -65,7 +65,7 @@ fn main() -> Result<()> {
 
     // get("https://espressif.com/")?;
 
-    let serial: u64 = app_config.waveplus_serial.parse()?;
+    let serial: u32 = app_config.waveplus_serial.parse()?;
     get_waveplus(&serial)?;
     // log::info!("got waveplus {:?}", waveplus);
     // read_waveplus(waveplus)?;
