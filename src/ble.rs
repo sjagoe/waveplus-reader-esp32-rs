@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Result};
 use esp32_nimble::{uuid128, BLEClient, BLEDevice, BLEAdvertisedDevice, BLEScan};
 use esp_idf_svc::hal::task::block_on;
-use log::*;
 use bincode::Options;
 
 use crate::measurement::{WavePlusManufacturerInfo, WavePlusMeasurement, WavePlusRawMeasurement};
