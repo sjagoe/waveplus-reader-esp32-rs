@@ -8,7 +8,9 @@ use esp_idf_svc::{
     http::client::{Configuration, EspHttpConnection},
 };
 
-pub fn get(url: impl AsRef<str>) -> Result<()> {
+use crate::measurement::WavePlusMeasurement;
+
+pub fn send_measurement(url: impl AsRef<str>, measurement: &WavePlusMeasurement) -> Result<()> {
     // 1. Create a new EspHttpClient. (Check documentation)
     // ANCHOR: connection
     let connection = EspHttpConnection::new(&Configuration {
@@ -20,8 +22,10 @@ pub fn get(url: impl AsRef<str>) -> Result<()> {
     let mut client = Client::wrap(connection);
 
     // 2. Open a GET request to `url`
-    let headers = [("accept", "text/plain")];
-    let request = client.request(Method::Get, url.as_ref(), &headers)?;
+    let headers = [("accept", "application/json")];
+    let mut request = client.request(Method::Post, url.as_ref(), &headers)?;
+    let json = serde_json::to_string(measurement)?;
+    request.write(json.as_bytes())?;
 
     // 3. Submit write request and check the status code of the response.
     // Successful http status codes are in the 200..=299 range.

@@ -13,7 +13,7 @@ mod measurement;
 use ble::read_waveplus;
 use rgbled::{RGB8, WS2812RMT};
 use wifi::wifi;
-use http::get;
+use http::send_measurement;
 
 /// This configuration is picked up at compile time by `build.rs` from the
 /// file `cfg.toml`.
@@ -27,6 +27,8 @@ pub struct Config {
     waveplus_serial: &'static str,
     #[default(30)]
     read_interval: u16,
+    #[default("")]
+    server: &'static str,
 }
 
 fn main() -> Result<()> {
@@ -51,21 +53,19 @@ fn main() -> Result<()> {
 
     log::info!("SSID: {:?}", app_config.wifi_ssid);
 
-    // let _wifi = match wifi(
-    //     app_config.wifi_ssid,
-    //     app_config.wifi_psk,
-    //     peripherals.modem,
-    //     sysloop,
-    // ) {
-    //     Ok(inner) => inner,
-    //     Err(err) => {
-    //         // Red!
-    //         led.set_pixel(RGB8::new(50, 0, 0))?;
-    //         bail!("Could not connect to Wi-Fi network: {:?}", err)
-    //     }
-    // };
-
-    // get("https://espressif.com/")?;
+    let _wifi = match wifi(
+        app_config.wifi_ssid,
+        app_config.wifi_psk,
+        peripherals.modem,
+        sysloop,
+    ) {
+        Ok(inner) => inner,
+        Err(err) => {
+            // Red!
+            led.set_pixel(RGB8::new(50, 0, 0))?;
+            bail!("Could not connect to Wi-Fi network: {:?}", err);
+        }
+    };
 
     let serial: u32 = app_config.waveplus_serial.parse()?;
 
@@ -76,8 +76,15 @@ fn main() -> Result<()> {
 
         println!("Received measurement {:?}", measurement);
 
+        if app_config.server != "" {
+            if let Some(error) = send_measurement(app_config.server, &measurement).err() {
+                led.set_pixel(RGB8::new(50, 0, 0))?;
+                return Err(error);
+            }
+        }
         // Green!
         led.set_pixel(RGB8::new(0, 50, 0))?;
+
         // Wait...
         std::thread::sleep(std::time::Duration::from_secs(app_config.read_interval.into()));
     }

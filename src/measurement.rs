@@ -1,27 +1,27 @@
 use bincode::Options;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
 pub struct WavePlusManufacturerInfo {
     pub serial_number: u32,
-    pub unknown: u16,
+    pub _unknown: u16,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct WavePlusRawMeasurement {
     version: u8,
     humidity: u8,
-    unknown1: u16,
+    _unknown1: u16,
     radon_short: u16,
     radon_long: u16,
     temperature: u16,
     pressure: u16,
     co2: u16,
     voc: u16,
-    unknown2: u32,
+    _unknown2: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct WavePlusMeasurement {
     version: u8,
     humidity: f64,

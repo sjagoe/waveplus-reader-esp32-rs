@@ -8,6 +8,8 @@ pub struct Config {
     waveplus_serial: &'static str,
     #[default(30)]
     read_interval: u16,
+    #[default("")]
+    server: &'static str,
 }
 
 fn main() {

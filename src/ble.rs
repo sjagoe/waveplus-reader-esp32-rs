@@ -62,8 +62,6 @@ async fn read_waveplus_once(serial_number: &u32) -> Result<WavePlusMeasurement> 
         });
         client.connect(&waveplus.addr()).await?;
 
-        let mut iter = client.get_services().await?;
-
         let service_uuid = uuid128!("b42e1c08-ade7-11e4-89d3-123b93f75cba");
         let characteristic_uuid = uuid128!("b42e2a68-ade7-11e4-89d3-123b93f75cba");
 
