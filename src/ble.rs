@@ -3,7 +3,9 @@ use bincode::Options;
 use esp32_nimble::{uuid128, BLEAdvertisedDevice, BLEClient, BLEDevice, BLEScan};
 use esp_idf_svc::hal::task::block_on;
 
-use crate::measurement::{WavePlusManufacturerInfo, WavePlusMeasurement, WavePlusRawMeasurement};
+use crate::measurement::{
+    WavePlusManufacturerInfo, WavePlusMeasurement, WavePlusRawMeasurementData,
+};
 
 macro_rules! bincode_options {
     () => {
@@ -14,7 +16,7 @@ macro_rules! bincode_options {
     };
 }
 
-fn parse_value(value: &Vec<u8>) -> Result<WavePlusMeasurement> {
+fn parse_value(value: &Vec<u8>) -> Result<WavePlusRawMeasurementData> {
     if value.len() != 20 {
         return Err(anyhow!("Unexpected BLE packet {:?}", value));
     }
@@ -23,12 +25,8 @@ fn parse_value(value: &Vec<u8>) -> Result<WavePlusMeasurement> {
     // <BBBBHHHHHHHH
     // [1, 96, 4, 0, 52, 0, 52, 0, 84, 7, 166, 196, 154, 2, 52, 0, 0, 0, 68, 7]
 
-    let raw: WavePlusRawMeasurement = bincode_options!().deserialize(value).unwrap();
-
-    let measurement = WavePlusMeasurement::from(raw);
-
-    log::info!("measurement: {:?}", measurement);
-    Ok(measurement)
+    let raw: WavePlusRawMeasurementData = bincode_options!().deserialize(value).unwrap();
+    Ok(raw)
 }
 
 async fn read_waveplus_once(serial_number: &u32) -> Result<WavePlusMeasurement> {
@@ -79,7 +77,14 @@ async fn read_waveplus_once(serial_number: &u32) -> Result<WavePlusMeasurement> 
         client.disconnect()?;
 
         match raw_value {
-            Ok(value) => parse_value(&value),
+            Ok(value) => {
+                let raw = parse_value(&value)?;
+                let measurement =
+                    WavePlusMeasurement::new(serial_number, &waveplus.addr().to_string(), &raw);
+
+                log::info!("measurement: {:?}", measurement);
+                Ok(measurement)
+            }
             Err(_) => Err(anyhow!("Failed to read measurement")),
         }
     } else {

@@ -7,7 +7,7 @@ pub struct WavePlusManufacturerInfo {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct WavePlusRawMeasurement {
+pub struct WavePlusRawMeasurementData {
     version: u8,
     humidity: u8,
     _unknown1: u16,
@@ -21,7 +21,7 @@ pub struct WavePlusRawMeasurement {
 }
 
 #[derive(Debug, Serialize)]
-pub struct WavePlusMeasurement {
+pub struct WavePlusMeasurementData {
     version: u8,
     humidity: f64,
     radon_short: Option<f64>,
@@ -32,6 +32,27 @@ pub struct WavePlusMeasurement {
     voc: f64,
 }
 
+#[derive(Debug, Serialize)]
+pub struct WavePlusMeasurement {
+    serial_number: u32,
+    address: String,
+    data: WavePlusMeasurementData,
+}
+
+impl WavePlusMeasurement {
+    pub fn new(
+        serial_number: &u32,
+        address: &str,
+        data: &WavePlusRawMeasurementData,
+    ) -> WavePlusMeasurement {
+        WavePlusMeasurement {
+            serial_number: *serial_number,
+            address: address.to_string(),
+            data: WavePlusMeasurementData::from(data),
+        }
+    }
+}
+
 fn parse_radon(value: u16) -> Option<f64> {
     if value > 16383 {
         return None;
@@ -39,12 +60,12 @@ fn parse_radon(value: u16) -> Option<f64> {
     Some(f64::from(value))
 }
 
-impl From<WavePlusRawMeasurement> for WavePlusMeasurement {
-    fn from(raw: WavePlusRawMeasurement) -> WavePlusMeasurement {
+impl From<&WavePlusRawMeasurementData> for WavePlusMeasurementData {
+    fn from(raw: &WavePlusRawMeasurementData) -> WavePlusMeasurementData {
         let radon_short = parse_radon(raw.radon_short);
         let radon_long = parse_radon(raw.radon_long);
 
-        WavePlusMeasurement {
+        WavePlusMeasurementData {
             version: raw.version,
             humidity: f64::from(raw.humidity) / 2.0,
             radon_short,
