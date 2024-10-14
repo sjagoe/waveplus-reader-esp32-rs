@@ -39,7 +39,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Run command
         env:
-          INSTALL: ${{ matrix.component }}
+          INSTALL: ${{ matrix.action.component }}
         run: |
           if [ -n "$INSTALL" ]; then
               rustup component add "$INSTALL"
