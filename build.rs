@@ -6,6 +6,8 @@ pub struct Config {
     wifi_psk: &'static str,
     #[default("")]
     waveplus_serial: &'static str,
+    #[default(30)]
+    read_interval: u16,
 }
 
 fn main() {

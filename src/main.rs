@@ -25,6 +25,8 @@ pub struct Config {
     wifi_psk: &'static str,
     #[default("")]
     waveplus_serial: &'static str,
+    #[default(30)]
+    read_interval: u16,
 }
 
 fn main() -> Result<()> {
@@ -77,6 +79,6 @@ fn main() -> Result<()> {
         // Green!
         led.set_pixel(RGB8::new(0, 50, 0))?;
         // Wait...
-        std::thread::sleep(std::time::Duration::from_secs(1));
+        std::thread::sleep(std::time::Duration::from_secs(app_config.read_interval.into()));
     }
 }
