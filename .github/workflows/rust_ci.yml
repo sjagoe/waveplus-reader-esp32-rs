@@ -22,8 +22,10 @@ jobs:
           - command: build
             args: --release
           - command: fmt
+            component: rustfmt
             args: --all -- --check --color always
           - command: clippy
+            component: clippy
             args: --all-targets --all-features --workspace -- -D warnings
     steps:
       - name: Checkout repository
@@ -36,4 +38,10 @@ jobs:
       - name: Enable caching
         uses: Swatinem/rust-cache@v2
       - name: Run command
-        run: cargo ${{ matrix.action.command }} ${{ matrix.action.args }}
+        env:
+          INSTALL: ${{ matrix.component }}
+        run: |
+          if [ -n "$INSTALL" ]; then
+              rustup component add "$INSTALL"
+          fi
+          cargo ${{ matrix.action.command }} ${{ matrix.action.args }}
