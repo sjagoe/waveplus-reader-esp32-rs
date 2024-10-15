@@ -8,6 +8,8 @@ use esp_idf_svc::{
 use log::*;
 
 use esp_idf_svc::netif::IpEvent;
+use esp_idf_svc::hal::delay::FreeRtos;
+use esp_idf_svc::sys::{esp, esp_wifi_connect};
 
 mod ble;
 mod http;
@@ -60,23 +62,7 @@ fn main() -> Result<()> {
 
     info!("SSID: {:?}", app_config.wifi_ssid);
 
-    info!("******* Wifi: Subscribing to events");
-    let _wifi_event_sub = sysloop.subscribe::<WifiEvent, _>(move |event| match event {
-        WifiEvent::StaConnected => {
-            info!("******* Received STA Connected Event");
-            // core::internal::wifi::COMMAND.signal(core::internal::wifi::WifiCommand::StaConnected);
-        }
-        WifiEvent::StaDisconnected => {
-            warn!("******* Received STA Disconnected event");
-        }
-        _ => info!("Received other Wifi event: {:?}", event),
-    })?;
-
-    let _ip_event_sub = sysloop.subscribe::<IpEvent, _>(move |event| match event {
-        _ => info!("Received other IPEvent: {:?}", event),
-    })?;
-
-    let wifi = connect_wifi(
+    let mut wifi = connect_wifi(
         peripherals.modem,
         sysloop.clone(),
         None,
@@ -84,6 +70,24 @@ fn main() -> Result<()> {
         app_config.wifi_ssid,
         app_config.wifi_psk,
     )?;
+
+    info!("Subscribing to events");
+    let _wifi_event_sub = sysloop.subscribe::<WifiEvent, _>(move |event| match event {
+        WifiEvent::StaDisconnected => {
+            error!("Received STA Disconnected event {:?}", event);
+            FreeRtos::delay_ms(1000);
+            // NOTE: calling the FFI binding directly to prevent casusing a move
+            // on the the EspWifi instance.
+            if let Err(err) = esp!(unsafe { esp_wifi_connect() }) {
+                info!("Error calling wifi.connect in wifi reconnect {:?}", err);
+            }
+        }
+        _ => info!("Received other Wifi event: {:?}", event),
+    })?;
+
+    let _ip_event_sub = sysloop.subscribe::<IpEvent, _>(move |event| match event {
+        _ => info!("Received other IPEvent: {:?}", event),
+    })?;
 
     let serial: u32 = app_config.waveplus_serial.parse()?;
     let waveplus = get_waveplus(&serial).expect("Unable to get waveplus bt device");
@@ -95,23 +99,29 @@ fn main() -> Result<()> {
                 info!("Initializing wifi");
                 wait_for_connected(&wifi)?;
                 led.set_pixel(RGB8::new(0, 50, 0))?;
-
                 state = State::Run;
             }
             State::WifiReconnect => {
-                led.set_pixel(RGB8::new(50, 50, 0))?;
+                led.set_pixel(RGB8::new(50, 0, 0))?;
+
+                warn!("Wifi connected: {:?}, up: {:?}", wifi.is_connected()?, wifi.is_up()?);
+
+                if wifi.is_connected()? {
+                    // If we're here and the wifi device thinks it's
+                    // connected, trigger a disconnect event and wait
+                    // for re-connect.
+                    warn!("Disconnecting wifi for connection retry");
+                    if let Err(err) = wifi.disconnect() {
+                        error!("Error calling wifi.disconnect after http failure {:?}", err);
+                    }
+                }
+
                 std::thread::sleep(std::time::Duration::from_millis(250));
 
-                // warn!("Disconnecting wifi");
-                // wifi.disconnect()?;
-                // wait_for_disconnected(&wifi)?;
+                led.set_pixel(RGB8::new(50, 50, 0))?;
+                warn!("Wifi connected: {:?}, up: {:?}", wifi.is_connected()?, wifi.is_up()?);
 
-                // warn!("Restarting wifi");
-                // wifi.start()?;
-
-                // warn!("Reconnecing wifi");
-                // wifi.connect()?;
-                // wait_for_connected(&wifi)?;
+                wait_for_connected(&wifi)?;
 
                 led.set_pixel(RGB8::new(0, 50, 0))?;
 
@@ -123,13 +133,8 @@ fn main() -> Result<()> {
                 led.set_pixel(RGB8::new(0, 0, 50))?;
                 let measurement = read_waveplus(&serial, &waveplus)?;
                 if send_measurement(app_config.server, &measurement).err().is_some() {
-                    // Red!
-                    led.set_pixel(RGB8::new(50, 0, 0))?;
                     next_state = State::WifiReconnect;
                 } else {
-                    std::thread::sleep(std::time::Duration::from_secs(1));
-
-                    // Green!
                     led.set_pixel(RGB8::new(0, 50, 0))?;
 
                     // Wait...
@@ -148,8 +153,3 @@ enum State {
     Run,
     WifiReconnect,
 }
-
-// fn run() -> Result<()> {
-
-//     Ok(())
-// }
