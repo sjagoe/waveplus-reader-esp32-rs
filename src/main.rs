@@ -91,16 +91,20 @@ fn main() -> Result<()> {
         _ => info!("Received other Wifi event: {:?}", event),
     })?;
 
-    let _ip_event_sub = sysloop.subscribe::<IpEvent, _>(move |event| match event {
-        _ => info!("Received other IPEvent: {:?}", event),
-    })?;
+    let _ip_event_sub = sysloop.subscribe::<IpEvent, _>(move |event| {
+        info!("Received other IPEvent: {:?}", event);
+    });
 
     info!("Initializing wifi");
     wait_for_connected(&wifi)?;
 
     // SNTP
-    let mut sntp_conf = SntpConf::default();
-    sntp_conf.servers = [app_config.ntp_server];
+
+
+    let sntp_conf = SntpConf::<'_> {
+        servers: [app_config.ntp_server],
+        ..Default::default()
+    };
     let sntp = EspSntp::new(&sntp_conf)?;
 
     wait_for_sntp(&sntp);
@@ -149,8 +153,6 @@ fn main() -> Result<()> {
                 state = State::Run;
             }
             State::Run => {
-                let next_state: State;
-
                 led.set_pixel(RGB8::new(0, 0, 50))?;
 
                 let current = get_datetime()?;
@@ -159,18 +161,16 @@ fn main() -> Result<()> {
                 let measurement = read_waveplus(&serial, &waveplus, include_radon)?;
                 last_run = Some(current);
                 led.set_pixel(RGB8::new(50, 50, 0))?;
-                if send_measurement(app_config.server, &measurement)
+                let next_state = if send_measurement(app_config.server, &measurement)
                     .err()
                     .is_some()
                 {
-                    next_state = State::WifiReconnect;
+                    State::WifiReconnect
                 } else {
                     led.set_pixel(RGB8::new(0, 50, 0))?;
-
-                    // Wait...
                     std::thread::sleep(std::time::Duration::from_secs(1));
-                    next_state = state;
-                }
+                    state
+                };
                 state = next_state;
             }
         }

@@ -56,7 +56,7 @@ pub fn get_waveplus(serial_number: &u32) -> Result<BLEAdvertisedDevice> {
             .await?;
 
         if let Some(device) = device {
-            Ok(device.clone())
+            Ok(device)
         } else {
             Err(anyhow!(
                 "Could not find Wave Plus with serial {:?}",
