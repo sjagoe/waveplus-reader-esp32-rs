@@ -100,7 +100,6 @@ fn main() -> Result<()> {
 
     // SNTP
 
-
     let sntp_conf = SntpConf::<'_> {
         servers: [app_config.ntp_server],
         ..Default::default()
@@ -168,7 +167,9 @@ fn main() -> Result<()> {
                     State::WifiReconnect
                 } else {
                     led.set_pixel(RGB8::new(0, 50, 0))?;
-                    std::thread::sleep(std::time::Duration::from_secs(1));
+                    std::thread::sleep(std::time::Duration::from_secs(u64::from(
+                        app_config.read_interval,
+                    )));
                     state
                 };
                 state = next_state;
