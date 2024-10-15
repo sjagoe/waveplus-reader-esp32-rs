@@ -1,15 +1,14 @@
 use anyhow::Result;
+use esp_idf_svc::hal::modem::WifiModemPeripheral;
+use esp_idf_svc::hal::peripheral::Peripheral;
+use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
     wifi::{AuthMethod, ClientConfiguration, Configuration, EspWifi},
 };
 use log::*;
-use esp_idf_svc::hal::modem::WifiModemPeripheral;
-use esp_idf_svc::nvs::EspDefaultNvsPartition;
-use esp_idf_svc::hal::peripheral::Peripheral;
 
 // use crate::wifi_fix::WifiConnectFix;
-
 
 pub fn connect_wifi<'d>(
     modem: impl Peripheral<P = impl WifiModemPeripheral + 'd> + 'd,
@@ -29,8 +28,12 @@ pub fn connect_wifi<'d>(
         }))?;
     } else {
         wifi.set_configuration(&Configuration::Client(ClientConfiguration {
-            ssid: ssid.try_into().expect("Could not parse SSID into Wifi config"),
-            password: psk.try_into().expect("Could not parse PSK into Wifi config"),
+            ssid: ssid
+                .try_into()
+                .expect("Could not parse SSID into Wifi config"),
+            password: psk
+                .try_into()
+                .expect("Could not parse PSK into Wifi config"),
             auth_method,
             ..Default::default()
         }))?;

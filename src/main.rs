@@ -8,10 +8,10 @@ use esp_idf_svc::{
 use log::*;
 use time::PrimitiveDateTime;
 
-use esp_idf_svc::netif::IpEvent;
 use esp_idf_svc::hal::delay::FreeRtos;
-use esp_idf_svc::sys::{esp, esp_wifi_connect};
+use esp_idf_svc::netif::IpEvent;
 use esp_idf_svc::sntp::{EspSntp, SntpConf, SyncStatus};
+use esp_idf_svc::sys::{esp, esp_wifi_connect};
 
 mod ble;
 mod http;
@@ -20,7 +20,7 @@ mod rgbled;
 mod time;
 mod wifi;
 
-use ble::{read_waveplus, get_waveplus};
+use ble::{get_waveplus, read_waveplus};
 use http::send_measurement;
 use rgbled::{RGB8, WS2812RMT};
 use time::get_datetime;
@@ -117,7 +117,11 @@ fn main() -> Result<()> {
             State::WifiReconnect => {
                 led.set_pixel(RGB8::new(50, 0, 0))?;
 
-                warn!("Wifi connected: {:?}, up: {:?}", wifi.is_connected()?, wifi.is_up()?);
+                warn!(
+                    "Wifi connected: {:?}, up: {:?}",
+                    wifi.is_connected()?,
+                    wifi.is_up()?
+                );
 
                 if wifi.is_connected()? {
                     // If we're here and the wifi device thinks it's
@@ -132,7 +136,11 @@ fn main() -> Result<()> {
                 std::thread::sleep(std::time::Duration::from_millis(250));
 
                 led.set_pixel(RGB8::new(50, 50, 0))?;
-                warn!("Wifi connected: {:?}, up: {:?}", wifi.is_connected()?, wifi.is_up()?);
+                warn!(
+                    "Wifi connected: {:?}, up: {:?}",
+                    wifi.is_connected()?,
+                    wifi.is_up()?
+                );
 
                 wait_for_connected(&wifi)?;
 
@@ -151,7 +159,10 @@ fn main() -> Result<()> {
                 let measurement = read_waveplus(&serial, &waveplus, include_radon)?;
                 last_run = Some(current);
                 led.set_pixel(RGB8::new(50, 50, 0))?;
-                if send_measurement(app_config.server, &measurement).err().is_some() {
+                if send_measurement(app_config.server, &measurement)
+                    .err()
+                    .is_some()
+                {
                     next_state = State::WifiReconnect;
                 } else {
                     led.set_pixel(RGB8::new(0, 50, 0))?;

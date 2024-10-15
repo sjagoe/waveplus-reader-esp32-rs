@@ -58,13 +58,23 @@ pub fn get_waveplus(serial_number: &u32) -> Result<BLEAdvertisedDevice> {
         if let Some(device) = device {
             Ok(device.clone())
         } else {
-            Err(anyhow!("Could not find Wave Plus with serial {:?}", serial_number))
+            Err(anyhow!(
+                "Could not find Wave Plus with serial {:?}",
+                serial_number
+            ))
         }
     })
 }
 
-pub fn read_waveplus(serial_number: &u32, waveplus: &BLEAdvertisedDevice, include_radon: bool) -> Result<WavePlusMeasurement> {
-    info!("Scraping measurement from {:?}: {:?}", serial_number, waveplus);
+pub fn read_waveplus(
+    serial_number: &u32,
+    waveplus: &BLEAdvertisedDevice,
+    include_radon: bool,
+) -> Result<WavePlusMeasurement> {
+    info!(
+        "Scraping measurement from {:?}: {:?}",
+        serial_number, waveplus
+    );
     block_on(async {
         let mut client = BLEClient::new();
         client.on_connect(|client| {
@@ -92,13 +102,12 @@ pub fn read_waveplus(serial_number: &u32, waveplus: &BLEAdvertisedDevice, includ
         match raw_value {
             Ok(value) => {
                 let raw = parse_value(&value)?;
-                let measurement =
-                    WavePlusMeasurement::new(
-                        serial_number,
-                        &waveplus.addr().to_string(),
-                        &raw,
-                        include_radon,
-                    );
+                let measurement = WavePlusMeasurement::new(
+                    serial_number,
+                    &waveplus.addr().to_string(),
+                    &raw,
+                    include_radon,
+                );
 
                 info!("measurement: {:?}", measurement);
                 Ok(measurement)

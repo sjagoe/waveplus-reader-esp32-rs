@@ -52,16 +52,17 @@ impl WavePlusMeasurement {
         data: &WavePlusRawMeasurementData,
         include_radon: bool,
     ) -> WavePlusMeasurement {
-        let datetime: Option<String> = match format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]") {
-            Ok(format) => match get_datetime() {
-                Ok(dt) => match dt.format(&format) {
-                    Ok(s) => Some(s),
+        let datetime: Option<String> =
+            match format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]") {
+                Ok(format) => match get_datetime() {
+                    Ok(dt) => match dt.format(&format) {
+                        Ok(s) => Some(s),
+                        Err(_) => None,
+                    },
                     Err(_) => None,
-                }
+                },
                 Err(_) => None,
-            }
-            Err(_) => None,
-        };
+            };
         let mut data = WavePlusMeasurementData::from(data);
         if !include_radon {
             log::warn!("Not returning radon measurement");
