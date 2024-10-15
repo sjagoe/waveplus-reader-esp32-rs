@@ -20,40 +20,17 @@ pub fn connect_wifi<'d>(
     psk: &str,
 ) -> Result<EspWifi<'d>> {
     let mut wifi = EspWifi::new(modem, sysloop.clone(), partition)?;
-    wifi.set_configuration(&Configuration::Client(ClientConfiguration::default()))?;
-
-    wifi.start()?;
-
-    let ap_infos = wifi.scan()?;
-
-    let ours = ap_infos.into_iter().find(|a| a.ssid == ssid);
-
-    let channel = if let Some(ours) = ours {
-        info!(
-            "Found configured access point {} on channel {}",
-            ssid, ours.channel
-        );
-        Some(ours.channel)
-    } else {
-        info!(
-            "Configured access point {} not found during scanning, will go with unknown channel",
-            ssid
-        );
-        None
-    };
 
     if psk.is_empty() {
         wifi.set_configuration(&Configuration::Client(ClientConfiguration {
             ssid: ssid.try_into().expect("Could not parse SSID"),
             auth_method: AuthMethod::None,
-            channel,
             ..Default::default()
         }))?;
     } else {
         wifi.set_configuration(&Configuration::Client(ClientConfiguration {
             ssid: ssid.try_into().expect("Could not parse SSID into Wifi config"),
             password: psk.try_into().expect("Could not parse PSK into Wifi config"),
-            channel,
             auth_method,
             ..Default::default()
         }))?;
@@ -82,6 +59,7 @@ pub fn wait_for_connected(wifi: &EspWifi) -> Result<()> {
 
 pub fn wait_for_disconnected(wifi: &EspWifi) -> Result<()> {
     loop {
+        warn!("Wifi connected: {:?}, up: {:?}", wifi.is_connected(), wifi.is_up());
         std::thread::sleep(std::time::Duration::from_millis(250));
         let connected = wifi.is_connected()?;
         if !connected {
