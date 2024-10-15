@@ -10,6 +10,8 @@ pub struct Config {
     read_interval: u16,
     #[default("")]
     server: &'static str,
+    #[default("pool.ntp.org")]
+    ntp_server: &'static str,
 }
 
 fn main() {

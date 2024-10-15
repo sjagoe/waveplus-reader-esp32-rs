@@ -10,6 +10,7 @@ use log::*;
 use esp_idf_svc::netif::IpEvent;
 use esp_idf_svc::hal::delay::FreeRtos;
 use esp_idf_svc::sys::{esp, esp_wifi_connect};
+use esp_idf_svc::sntp::{EspSntp, SntpConf, SyncStatus};
 
 mod ble;
 mod http;
@@ -36,6 +37,8 @@ pub struct Config {
     read_interval: u16,
     #[default("")]
     server: &'static str,
+    #[default("pool.ntp.org")]
+    ntp_server: &'static str,
 }
 
 fn main() -> Result<()> {
@@ -89,18 +92,24 @@ fn main() -> Result<()> {
         _ => info!("Received other IPEvent: {:?}", event),
     })?;
 
+    info!("Initializing wifi");
+    wait_for_connected(&wifi)?;
+
+    // SNTP
+    let mut sntp_conf = SntpConf::default();
+    sntp_conf.servers = [app_config.ntp_server];
+    let sntp = EspSntp::new(&sntp_conf)?;
+
+    wait_for_sntp(&sntp);
+
+    led.set_pixel(RGB8::new(0, 50, 0))?;
+
     let serial: u32 = app_config.waveplus_serial.parse()?;
     let waveplus = get_waveplus(&serial).expect("Unable to get waveplus bt device");
-    let mut state: State = State::Init;
+    let mut state: State = State::Run;
     loop {
         info!("Current state: {:?}", state);
         match state {
-            State::Init => {
-                info!("Initializing wifi");
-                wait_for_connected(&wifi)?;
-                led.set_pixel(RGB8::new(0, 50, 0))?;
-                state = State::Run;
-            }
             State::WifiReconnect => {
                 led.set_pixel(RGB8::new(50, 0, 0))?;
 
@@ -150,7 +159,16 @@ fn main() -> Result<()> {
 
 #[derive(Debug)]
 enum State {
-    Init,
     Run,
     WifiReconnect,
+}
+
+fn wait_for_sntp(sntp: &EspSntp) {
+    loop {
+        info!("Waiting for sntp sync {:?}", sntp.get_sync_status());
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        if sntp.get_sync_status() == SyncStatus::Completed {
+            break;
+        }
+    }
 }
