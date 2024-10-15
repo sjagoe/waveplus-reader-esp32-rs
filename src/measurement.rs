@@ -34,7 +34,7 @@ pub struct WavePlusMeasurementData {
 
 #[derive(Debug, Serialize)]
 pub struct WavePlusMeasurement {
-    serial_number: u32,
+    serial_number: String,
     address: String,
     data: WavePlusMeasurementData,
 }
@@ -46,7 +46,7 @@ impl WavePlusMeasurement {
         data: &WavePlusRawMeasurementData,
     ) -> WavePlusMeasurement {
         WavePlusMeasurement {
-            serial_number: *serial_number,
+            serial_number: serial_number.to_string(),
             address: address.to_string(),
             data: WavePlusMeasurementData::from(data),
         }
