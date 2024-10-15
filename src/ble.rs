@@ -2,6 +2,7 @@ use anyhow::{anyhow, Result};
 use bincode::Options;
 use esp32_nimble::{uuid128, BLEAdvertisedDevice, BLEClient, BLEDevice, BLEScan};
 use esp_idf_svc::hal::task::block_on;
+use log::*;
 
 use crate::measurement::{
     WavePlusManufacturerInfo, WavePlusMeasurement, WavePlusRawMeasurementData,
@@ -20,7 +21,7 @@ fn parse_value(value: &Vec<u8>) -> Result<WavePlusRawMeasurementData> {
     if value.len() != 20 {
         return Err(anyhow!("Unexpected BLE packet {:?}", value));
     }
-    log::info!("can read {:?}", value);
+    info!("can read {:?}", value);
 
     // <BBBBHHHHHHHH
     // [1, 96, 4, 0, 52, 0, 52, 0, 84, 7, 166, 196, 154, 2, 52, 0, 0, 0, 68, 7]
@@ -29,30 +30,42 @@ fn parse_value(value: &Vec<u8>) -> Result<WavePlusRawMeasurementData> {
     Ok(raw)
 }
 
-async fn read_waveplus_once(serial_number: &u32) -> Result<WavePlusMeasurement> {
-    let ble_device = BLEDevice::take();
-    let mut ble_scan = BLEScan::new();
-    let device = ble_scan
-        .active_scan(true)
-        .interval(100)
-        .window(99)
-        .start(ble_device, 10000, |device, data| {
-            if let Some(manufacture_data) = data.manufacture_data() {
-                if manufacture_data.company_identifier != 0x0334 {
-                    return None::<BLEAdvertisedDevice>;
+pub fn get_waveplus(serial_number: &u32) -> Result<BLEAdvertisedDevice> {
+    info!("Scanning for Wave Plus devices");
+    block_on(async {
+        let ble_device = BLEDevice::take();
+        let mut ble_scan = BLEScan::new();
+        let device = ble_scan
+            .active_scan(true)
+            .interval(100)
+            .window(99)
+            .start(ble_device, 10000, |device, data| {
+                if let Some(manufacture_data) = data.manufacture_data() {
+                    if manufacture_data.company_identifier != 0x0334 {
+                        return None::<BLEAdvertisedDevice>;
+                    }
+                    let mfg: WavePlusManufacturerInfo = bincode_options!()
+                        .deserialize(manufacture_data.payload)
+                        .unwrap();
+                    if mfg.serial_number == *serial_number {
+                        return Some(*device);
+                    }
                 }
-                let mfg: WavePlusManufacturerInfo = bincode_options!()
-                    .deserialize(manufacture_data.payload)
-                    .unwrap();
-                if mfg.serial_number == *serial_number {
-                    return Some(*device);
-                }
-            }
-            None::<BLEAdvertisedDevice>
-        })
-        .await?;
+                None::<BLEAdvertisedDevice>
+            })
+            .await?;
 
-    if let Some(waveplus) = device {
+        if let Some(device) = device {
+            Ok(device.clone())
+        } else {
+            Err(anyhow!("Could not find Wave Plus with serial {:?}", serial_number))
+        }
+    })
+}
+
+pub fn read_waveplus(serial_number: &u32, waveplus: &BLEAdvertisedDevice) -> Result<WavePlusMeasurement> {
+    info!("Scraping measurement from {:?}: {:?}", serial_number, waveplus);
+    block_on(async {
         let mut client = BLEClient::new();
         client.on_connect(|client| {
             client.update_conn_params(120, 120, 0, 60).unwrap();
@@ -67,7 +80,7 @@ async fn read_waveplus_once(serial_number: &u32) -> Result<WavePlusMeasurement> 
         let characteristic = service.get_characteristic(characteristic_uuid).await?;
 
         if !characteristic.can_read() {
-            ::log::error!("characteristic can't read: {}", characteristic);
+            error!("characteristic can't read: {}", characteristic);
             client.disconnect()?;
             return Err(anyhow!("Unable to read measurement"));
         }
@@ -82,19 +95,10 @@ async fn read_waveplus_once(serial_number: &u32) -> Result<WavePlusMeasurement> 
                 let measurement =
                     WavePlusMeasurement::new(serial_number, &waveplus.addr().to_string(), &raw);
 
-                log::info!("measurement: {:?}", measurement);
+                info!("measurement: {:?}", measurement);
                 Ok(measurement)
             }
             Err(_) => Err(anyhow!("Failed to read measurement")),
         }
-    } else {
-        Err(anyhow!("Could not find device"))
-    }
-}
-
-pub fn read_waveplus(serial_number: &u32) -> Result<WavePlusMeasurement> {
-    block_on(async {
-        let measurement: WavePlusMeasurement = read_waveplus_once(serial_number).await?;
-        Ok(measurement)
     })
 }

@@ -15,7 +15,7 @@ mod measurement;
 mod rgbled;
 mod wifi;
 
-use ble::read_waveplus;
+use ble::{read_waveplus, get_waveplus};
 use http::send_measurement;
 use rgbled::{RGB8, WS2812RMT};
 use wifi::{connect_wifi, wait_for_connected};
@@ -67,7 +67,7 @@ fn main() -> Result<()> {
             // core::internal::wifi::COMMAND.signal(core::internal::wifi::WifiCommand::StaConnected);
         }
         WifiEvent::StaDisconnected => {
-            info!("******* Received STA Disconnected event");
+            warn!("******* Received STA Disconnected event");
         }
         _ => info!("Received other Wifi event: {:?}", event),
     })?;
@@ -86,6 +86,7 @@ fn main() -> Result<()> {
     )?;
 
     let serial: u32 = app_config.waveplus_serial.parse()?;
+    let waveplus = get_waveplus(&serial).expect("Unable to get waveplus bt device");
     let mut state: State = State::Init;
     loop {
         info!("Current state: {:?}", state);
@@ -120,7 +121,7 @@ fn main() -> Result<()> {
                 let next_state: State;
 
                 led.set_pixel(RGB8::new(0, 0, 50))?;
-                let measurement = read_waveplus(&serial)?;
+                let measurement = read_waveplus(&serial, &waveplus)?;
                 if send_measurement(app_config.server, &measurement).err().is_some() {
                     // Red!
                     led.set_pixel(RGB8::new(50, 0, 0))?;
