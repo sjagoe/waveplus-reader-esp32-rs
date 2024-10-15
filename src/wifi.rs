@@ -1,36 +1,28 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
-    wifi::{AuthMethod, BlockingWifi, ClientConfiguration, Configuration, EspWifi},
+    wifi::{AuthMethod, ClientConfiguration, Configuration, EspWifi},
 };
-use log::info;
+use log::*;
+use esp_idf_svc::hal::modem::WifiModemPeripheral;
+use esp_idf_svc::nvs::EspDefaultNvsPartition;
+use esp_idf_svc::hal::peripheral::Peripheral;
 
-use crate::wifi_fix::WifiConnectFix;
+// use crate::wifi_fix::WifiConnectFix;
 
-pub fn connect_wifi(
-    ssid: &str,
-    pass: &str,
-    esp_wifi: &mut EspWifi,
+
+pub fn connect_wifi<'d>(
+    modem: impl Peripheral<P = impl WifiModemPeripheral + 'd> + 'd,
     sysloop: EspSystemEventLoop,
-) -> Result<()> {
-    let mut auth_method = AuthMethod::WPA2Personal;
-    if ssid.is_empty() {
-        bail!("Missing WiFi name")
-    }
-    if pass.is_empty() {
-        auth_method = AuthMethod::None;
-        info!("Wifi password is empty");
-    }
-    let mut wifi = BlockingWifi::wrap(esp_wifi, sysloop.clone())?;
-
+    partition: Option<EspDefaultNvsPartition>,
+    auth_method: AuthMethod,
+    ssid: &str,
+    psk: &str,
+) -> Result<EspWifi<'d>> {
+    let mut wifi = EspWifi::new(modem, sysloop.clone(), partition)?;
     wifi.set_configuration(&Configuration::Client(ClientConfiguration::default()))?;
 
-    info!("Starting wifi...");
-
-    wifi.stop()?;
     wifi.start()?;
-
-    info!("Scanning...");
 
     let ap_infos = wifi.scan()?;
 
@@ -50,25 +42,52 @@ pub fn connect_wifi(
         None
     };
 
-    wifi.set_configuration(&Configuration::Client(ClientConfiguration {
-        ssid: ssid
-            .try_into()
-            .expect("Could not parse the given SSID into WiFi config"),
-        password: pass
-            .try_into()
-            .expect("Could not parse the given password into WiFi config"),
-        channel,
-        auth_method,
-        ..Default::default()
-    }))?;
+    if psk.is_empty() {
+        wifi.set_configuration(&Configuration::Client(ClientConfiguration {
+            ssid: ssid.try_into().expect("Could not parse SSID"),
+            auth_method: AuthMethod::None,
+            channel,
+            ..Default::default()
+        }))?;
+    } else {
+        wifi.set_configuration(&Configuration::Client(ClientConfiguration {
+            ssid: ssid.try_into().expect("Could not parse SSID into Wifi config"),
+            password: psk.try_into().expect("Could not parse PSK into Wifi config"),
+            channel,
+            auth_method,
+            ..Default::default()
+        }))?;
+    }
 
     wifi.start()?;
+    wifi.connect()?;
 
-    wifi.connect_with_retry()?;
+    Ok(wifi)
+}
 
-    let ip_info = wifi.wifi().sta_netif().get_ip_info()?;
+pub fn wait_for_connected(wifi: &EspWifi) -> Result<()> {
+    loop {
+        std::thread::sleep(std::time::Duration::from_millis(250));
+        let connected = wifi.is_up()?;
+        if connected {
+            break;
+        }
+    }
 
-    info!("Wifi DHCP info: {:?}", ip_info);
+    info!("Connected to wifi");
+
+    Ok(())
+}
+
+
+pub fn wait_for_disconnected(wifi: &EspWifi) -> Result<()> {
+    loop {
+        std::thread::sleep(std::time::Duration::from_millis(250));
+        let connected = wifi.is_connected()?;
+        if !connected {
+            break;
+        }
+    }
 
     Ok(())
 }
