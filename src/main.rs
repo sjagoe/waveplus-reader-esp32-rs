@@ -193,8 +193,8 @@ fn should_include_radon(last: Option<PrimitiveDateTime>, current: PrimitiveDateT
 }
 
 fn wait_for_sntp(sntp: &EspSntp) {
+    info!("Waiting for sntp sync {:?}", sntp.get_sync_status());
     loop {
-        info!("Waiting for sntp sync {:?}", sntp.get_sync_status());
         std::thread::sleep(std::time::Duration::from_millis(100));
         if sntp.get_sync_status() == SyncStatus::Completed {
             break;
