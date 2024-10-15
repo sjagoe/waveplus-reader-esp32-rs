@@ -55,17 +55,3 @@ pub fn wait_for_connected(wifi: &EspWifi) -> Result<()> {
 
     Ok(())
 }
-
-
-pub fn wait_for_disconnected(wifi: &EspWifi) -> Result<()> {
-    loop {
-        warn!("Wifi connected: {:?}, up: {:?}", wifi.is_connected(), wifi.is_up());
-        std::thread::sleep(std::time::Duration::from_millis(250));
-        let connected = wifi.is_connected()?;
-        if !connected {
-            break;
-        }
-    }
-
-    Ok(())
-}
