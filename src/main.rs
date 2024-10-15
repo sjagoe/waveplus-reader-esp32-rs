@@ -6,6 +6,7 @@ use esp_idf_svc::{
     wifi::{AuthMethod, WifiEvent},
 };
 use log::*;
+use time::PrimitiveDateTime;
 
 use esp_idf_svc::netif::IpEvent;
 use esp_idf_svc::hal::delay::FreeRtos;
@@ -16,11 +17,13 @@ mod ble;
 mod http;
 mod measurement;
 mod rgbled;
+mod time;
 mod wifi;
 
 use ble::{read_waveplus, get_waveplus};
 use http::send_measurement;
 use rgbled::{RGB8, WS2812RMT};
+use time::get_datetime;
 use wifi::{connect_wifi, wait_for_connected};
 
 /// This configuration is picked up at compile time by `build.rs` from the
@@ -107,6 +110,7 @@ fn main() -> Result<()> {
     let serial: u32 = app_config.waveplus_serial.parse()?;
     let waveplus = get_waveplus(&serial).expect("Unable to get waveplus bt device");
     let mut state: State = State::Run;
+    let mut last_run: Option<PrimitiveDateTime> = None;
     loop {
         info!("Current state: {:?}", state);
         match state {
@@ -140,7 +144,12 @@ fn main() -> Result<()> {
                 let next_state: State;
 
                 led.set_pixel(RGB8::new(0, 0, 50))?;
-                let measurement = read_waveplus(&serial, &waveplus)?;
+
+                let current = get_datetime()?;
+                let include_radon = should_include_radon(last_run, current);
+                warn!("Include radon measurement? {:?}", include_radon);
+                let measurement = read_waveplus(&serial, &waveplus, include_radon)?;
+                last_run = Some(current);
                 led.set_pixel(RGB8::new(50, 50, 0))?;
                 if send_measurement(app_config.server, &measurement).err().is_some() {
                     next_state = State::WifiReconnect;
@@ -161,6 +170,15 @@ fn main() -> Result<()> {
 enum State {
     Run,
     WifiReconnect,
+}
+
+fn should_include_radon(last: Option<PrimitiveDateTime>, current: PrimitiveDateTime) -> bool {
+    warn!("last run {:?}, current run {:?}", last, current);
+    if let Some(last) = last {
+        last.hour() < current.hour()
+    } else {
+        true
+    }
 }
 
 fn wait_for_sntp(sntp: &EspSntp) {
