@@ -14,6 +14,7 @@ pub fn send_measurement(url: impl AsRef<str>, measurement: &WavePlusMeasurement)
     let connection = EspHttpConnection::new(&Configuration {
         use_global_ca_store: true,
         crt_bundle_attach: Some(esp_idf_svc::sys::esp_crt_bundle_attach),
+        timeout: Some(std::time::Duration::from_secs(30)),
         ..Default::default()
     })?;
     // ANCHOR_END: connection
