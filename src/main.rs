@@ -132,6 +132,7 @@ fn main() -> Result<()> {
 
                 led.set_pixel(RGB8::new(0, 0, 50))?;
                 let measurement = read_waveplus(&serial, &waveplus)?;
+                led.set_pixel(RGB8::new(50, 50, 0))?;
                 if send_measurement(app_config.server, &measurement).err().is_some() {
                     next_state = State::WifiReconnect;
                 } else {
