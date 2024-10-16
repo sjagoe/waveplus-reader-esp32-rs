@@ -51,7 +51,7 @@ impl Clone for WavePlusMeasurement {
             serial_number: self.serial_number.clone(),
             address: self.address.clone(),
             datetime: self.datetime.clone(),
-            data: self.data.clone(),
+            data: self.data,
         }
     }
 }
