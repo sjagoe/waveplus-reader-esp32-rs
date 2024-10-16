@@ -134,9 +134,7 @@ fn main() -> Result<()> {
                 }
 
                 std::thread::sleep(std::time::Duration::from_millis(250));
-                state
-                    .with_mode(ExecutionMode::WifiReconnect)
-                    .with_status(Status::Recovering)
+                state.with_mode(ExecutionMode::WifiReconnect)
             }
             ExecutionMode::WifiReconnect => {
                 warn!(
@@ -147,9 +145,7 @@ fn main() -> Result<()> {
 
                 wait_for_connected(&wifi)?;
 
-                state
-                    .with_mode(ExecutionMode::CollectMeasurement)
-                    .with_status(Status::Collecting)
+                state.with_mode(ExecutionMode::CollectMeasurement)
             }
             ExecutionMode::CollectMeasurement => {
                 let current = get_datetime()?;
@@ -164,22 +160,16 @@ fn main() -> Result<()> {
                     .err()
                     .is_some()
                 {
-                    state
-                        .with_mode(ExecutionMode::WifiDisconnect)
-                        .with_status(Status::Error)
+                    state.with_mode(ExecutionMode::WifiDisconnect)
                 } else {
-                    state
-                        .with_mode(ExecutionMode::Wait)
-                        .with_status(Status::Ready)
+                    state.with_mode(ExecutionMode::Wait)
                 }
             }
             ExecutionMode::Wait => {
                 std::thread::sleep(std::time::Duration::from_secs(u64::from(
                     app_config.read_interval,
                 )));
-                state
-                    .with_mode(ExecutionMode::CollectMeasurement)
-                    .with_status(Status::Collecting)
+                state.with_mode(ExecutionMode::CollectMeasurement)
             }
         };
     }
@@ -203,6 +193,17 @@ enum Status {
     Recovering,
 }
 
+impl From<ExecutionMode> for Status {
+    fn from(mode: ExecutionMode) -> Status {
+        match mode {
+            ExecutionMode::CollectMeasurement => Status::Collecting,
+            ExecutionMode::Wait => Status::Ready,
+            ExecutionMode::WifiDisconnect => Status::Error,
+            ExecutionMode::WifiReconnect => Status::Recovering,
+        }
+    }
+}
+
 impl From<Status> for RGB8 {
     fn from(status: Status) -> RGB8 {
         match status {
@@ -211,7 +212,7 @@ impl From<Status> for RGB8 {
             Status::Collecting => RGB8::new(0, 0, 50),
             Status::Sending => RGB8::new(50, 50, 0),
             Status::Error => RGB8::new(50, 0, 0),
-            Status::Recovering => RGB8::new(0, 50, 0),
+            Status::Recovering => RGB8::new(50, 50, 0),
         }
     }
 }
@@ -224,11 +225,11 @@ struct State {
 
 impl State {
     pub fn with_mode(&self, mode: ExecutionMode) -> Self {
-        State { mode, ..*self }
-    }
-
-    pub fn with_status(&self, status: Status) -> Self {
-        State { status, ..*self }
+        State {
+            mode,
+            status: Status::from(mode),
+            ..*self
+        }
     }
 }
 
