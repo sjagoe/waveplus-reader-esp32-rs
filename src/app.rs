@@ -3,6 +3,7 @@ use esp_idf_svc::wifi::EspWifi;
 use log::*;
 use time::PrimitiveDateTime;
 
+mod http;
 mod state;
 
 use crate::app::state::*;
@@ -36,9 +37,13 @@ pub fn run(
         state = match state.mode {
             ExecutionMode::Initialize | ExecutionMode::Reinitialize => {
                 let waveplus = get_waveplus(&serial).expect("Unable to get waveplus bt device");
-                state
+                let newstate = state
                     .with_mode(ExecutionMode::CollectMeasurement)
-                    .with_waveplus(waveplus)
+                    .with_waveplus(waveplus);
+                match state.mode {
+                    ExecutionMode::Reinitialize => newstate.ble_disconnected(),
+                    _ => newstate,
+                }
             }
             ExecutionMode::WifiDisconnect => {
                 warn!(
@@ -58,7 +63,7 @@ pub fn run(
                 }
 
                 std::thread::sleep(std::time::Duration::from_millis(250));
-                state.with_mode(ExecutionMode::WifiReconnect)
+                state.with_mode(ExecutionMode::WifiReconnect).wifi_disconnected()
             }
             ExecutionMode::WifiReconnect => {
                 warn!(
@@ -93,19 +98,15 @@ pub fn run(
             }
             ExecutionMode::SendMeasurement => {
                 let current = get_datetime()?;
-                if let Some(measurement) = state.measurement {
-                    let (next_mode, force) = if measurement.send(server).err().is_some() {
-                        (ExecutionMode::WifiDisconnect, measurement.has_radon())
-                    } else {
-                        (ExecutionMode::Wait, false)
-                    };
-                    state
-                        .with_mode(next_mode)
-                        .with_last_run(current)
-                        .force_radon_measurement(force)
+                let (next_mode, force) = if http::send(&state, server).err().is_some() {
+                    (ExecutionMode::WifiDisconnect, state.measurement_has_radon())
                 } else {
-                    state.with_mode(ExecutionMode::CollectMeasurement)
-                }
+                    (ExecutionMode::Wait, false)
+                };
+                state
+                    .with_mode(next_mode)
+                    .with_last_run(current)
+                    .force_radon_measurement(force)
             }
             ExecutionMode::Wait => {
                 std::thread::sleep(std::time::Duration::from_secs(u64::from(read_interval)));

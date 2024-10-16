@@ -1,3 +1,5 @@
+use serde::ser::{SerializeStruct, Serializer};
+use serde::Serialize;
 use time::PrimitiveDateTime;
 
 use crate::rgbled::RGB8;
@@ -52,6 +54,28 @@ impl From<Status> for RGB8 {
     }
 }
 
+#[derive(Default, Debug, Clone, Copy, Serialize)]
+struct Errors {
+    wifi_disconnects: u64,
+    ble_disconnects: u64,
+}
+
+impl Errors {
+    fn wifi_disconnected(&self) -> Self {
+        Errors {
+            wifi_disconnects: self.wifi_disconnects + 1,
+            ..*self
+        }
+    }
+
+    fn ble_disconnected(&self) -> Self {
+        Errors {
+            ble_disconnects: self.ble_disconnects + 1,
+            ..*self
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct State {
     pub mode: ExecutionMode,
@@ -60,9 +84,43 @@ pub struct State {
     pub measurement: Option<WavePlusMeasurement>,
     pub force_radon_measurement: bool,
     pub waveplus: Option<BLEAdvertisedDevice>,
+    errors: Errors,
+}
+
+impl Serialize for State {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("State", 4)?;
+
+        if let Some(measurement) = self.measurement {
+            state.serialize_field("metadata", &measurement.metadata)?;
+            state.serialize_field("data", &measurement.data)?;
+        }
+
+        state.serialize_field("measurement", &self.measurement)?;
+        state.serialize_field("errors", &self.errors)?;
+
+        state.end()
+    }
 }
 
 impl State {
+    pub fn wifi_disconnected(&self) -> Self {
+        State {
+            errors: self.errors.wifi_disconnected(),
+            ..*self
+        }
+    }
+
+    pub fn ble_disconnected(&self) -> Self {
+        State {
+            errors: self.errors.ble_disconnected(),
+            ..*self
+        }
+    }
+
     pub fn with_mode(&self, mode: ExecutionMode) -> Self {
         State {
             mode,
@@ -70,6 +128,14 @@ impl State {
             measurement: None,
             force_radon_measurement: false,
             ..*self
+        }
+    }
+
+    pub fn measurement_has_radon(&self) -> bool {
+        if let Some(measurement) = self.measurement {
+            measurement.has_radon()
+        } else {
+            false
         }
     }
 
@@ -111,6 +177,7 @@ impl Default for State {
             measurement: None,
             force_radon_measurement: true,
             waveplus: None,
+            errors: Errors::default(),
         }
     }
 }
