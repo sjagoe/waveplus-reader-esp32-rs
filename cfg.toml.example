@@ -2,3 +2,6 @@
 wifi_ssid = "FBI Surveillance Van"
 wifi_psk = "hunter2"
 waveplus_serial = "1234"
+read_interval = 30
+server = "https://telegraf.example.com/measurements"
+ntp_server = "pool.ntp.org"
