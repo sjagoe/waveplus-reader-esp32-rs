@@ -100,12 +100,7 @@ impl Serialize for State {
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("State", 4)?;
-
-        if let Some(measurement) = self.measurement {
-            state.serialize_field("metadata", &measurement.metadata)?;
-            state.serialize_field("data", &measurement.data)?;
-        }
+        let mut state = serializer.serialize_struct("State", 2)?;
 
         state.serialize_field("measurement", &self.measurement)?;
         state.serialize_field("errors", &self.errors)?;
