@@ -58,7 +58,7 @@ fn main() -> Result<()> {
 
     // Start the LED off yellow
     let mut led = WS2812RMT::new(peripherals.pins.gpio8, peripherals.rmt.channel0)?;
-    led.set_pixel(RGB8::new(50, 50, 0))?;
+    led.set_pixel(RGB8::from(Status::Initializing))?;
 
     let sysloop = EspSystemEventLoop::take()?;
 
@@ -108,18 +108,15 @@ fn main() -> Result<()> {
 
     wait_for_sntp(&sntp);
 
-    led.set_pixel(RGB8::new(0, 50, 0))?;
-
     let serial: u32 = app_config.waveplus_serial.parse()?;
     let waveplus = get_waveplus(&serial).expect("Unable to get waveplus bt device");
-    let mut state: State = State::Run;
+    let mut state: State = State::default();
     let mut last_run: Option<PrimitiveDateTime> = None;
     loop {
+        led.set_pixel(RGB8::from(state.status))?;
         info!("Current state: {:?}", state);
-        match state {
-            State::WifiReconnect => {
-                led.set_pixel(RGB8::new(50, 0, 0))?;
-
+        state = match state.mode {
+            ExecutionMode::WifiDisconnect => {
                 warn!(
                     "Wifi connected: {:?}, up: {:?}",
                     wifi.is_connected()?,
@@ -137,8 +134,11 @@ fn main() -> Result<()> {
                 }
 
                 std::thread::sleep(std::time::Duration::from_millis(250));
-
-                led.set_pixel(RGB8::new(50, 50, 0))?;
+                state
+                    .with_mode(ExecutionMode::WifiReconnect)
+                    .with_status(Status::Recovering)
+            }
+            ExecutionMode::WifiReconnect => {
                 warn!(
                     "Wifi connected: {:?}, up: {:?}",
                     wifi.is_connected()?,
@@ -147,41 +147,98 @@ fn main() -> Result<()> {
 
                 wait_for_connected(&wifi)?;
 
-                led.set_pixel(RGB8::new(0, 50, 0))?;
-
-                state = State::Run;
+                state
+                    .with_mode(ExecutionMode::CollectMeasurement)
+                    .with_status(Status::Collecting)
             }
-            State::Run => {
-                led.set_pixel(RGB8::new(0, 0, 50))?;
-
+            ExecutionMode::CollectMeasurement => {
                 let current = get_datetime()?;
                 let include_radon = should_include_radon(last_run, current);
+
                 warn!("Include radon measurement? {:?}", include_radon);
                 let measurement = read_waveplus(&serial, &waveplus, include_radon)?;
                 last_run = Some(current);
-                led.set_pixel(RGB8::new(50, 50, 0))?;
-                let next_state = if send_measurement(app_config.server, &measurement)
+                led.set_pixel(RGB8::from(Status::Sending))?;
+
+                if send_measurement(app_config.server, &measurement)
                     .err()
                     .is_some()
                 {
-                    State::WifiReconnect
-                } else {
-                    led.set_pixel(RGB8::new(0, 50, 0))?;
-                    std::thread::sleep(std::time::Duration::from_secs(u64::from(
-                        app_config.read_interval,
-                    )));
                     state
-                };
-                state = next_state;
+                        .with_mode(ExecutionMode::WifiDisconnect)
+                        .with_status(Status::Error)
+                } else {
+                    state
+                        .with_mode(ExecutionMode::Wait)
+                        .with_status(Status::Ready)
+                }
             }
+            ExecutionMode::Wait => {
+                std::thread::sleep(std::time::Duration::from_secs(u64::from(
+                    app_config.read_interval,
+                )));
+                state
+                    .with_mode(ExecutionMode::CollectMeasurement)
+                    .with_status(Status::Collecting)
+            }
+        };
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum ExecutionMode {
+    CollectMeasurement,
+    Wait,
+    WifiDisconnect,
+    WifiReconnect,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Status {
+    Initializing,
+    Ready,
+    Collecting,
+    Sending,
+    Error,
+    Recovering,
+}
+
+impl From<Status> for RGB8 {
+    fn from(status: Status) -> RGB8 {
+        match status {
+            Status::Initializing => RGB8::new(50, 50, 0),
+            Status::Ready => RGB8::new(0, 50, 0),
+            Status::Collecting => RGB8::new(0, 0, 50),
+            Status::Sending => RGB8::new(50, 50, 0),
+            Status::Error => RGB8::new(50, 0, 0),
+            Status::Recovering => RGB8::new(0, 50, 0),
         }
     }
 }
 
-#[derive(Debug)]
-enum State {
-    Run,
-    WifiReconnect,
+#[derive(Debug, Clone, Copy)]
+struct State {
+    mode: ExecutionMode,
+    status: Status,
+}
+
+impl State {
+    pub fn with_mode(&self, mode: ExecutionMode) -> Self {
+        State { mode, ..*self }
+    }
+
+    pub fn with_status(&self, status: Status) -> Self {
+        State { status, ..*self }
+    }
+}
+
+impl Default for State {
+    fn default() -> Self {
+        State {
+            mode: ExecutionMode::CollectMeasurement,
+            status: Status::Ready,
+        }
+    }
 }
 
 fn should_include_radon(last: Option<PrimitiveDateTime>, current: PrimitiveDateTime) -> bool {

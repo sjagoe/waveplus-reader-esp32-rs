@@ -51,7 +51,7 @@ impl WavePlusMeasurement {
         address: &str,
         data: &WavePlusRawMeasurementData,
         include_radon: bool,
-    ) -> WavePlusMeasurement {
+    ) -> Self {
         let datetime: Option<String> =
             match format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]") {
                 Ok(format) => match get_datetime() {
