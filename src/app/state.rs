@@ -42,12 +42,12 @@ impl From<ExecutionMode> for Status {
 impl From<Status> for RGB8 {
     fn from(status: Status) -> RGB8 {
         match status {
-            Status::Initializing => RGB8::new(50, 50, 0),
-            Status::Ready => RGB8::new(0, 50, 0),
-            Status::Collecting => RGB8::new(0, 0, 50),
-            Status::Sending => RGB8::new(0, 50, 50),
-            Status::Error => RGB8::new(50, 0, 0),
-            Status::Recovering => RGB8::new(50, 0, 50),
+            Status::Initializing => RGB8::new(10, 10, 0),
+            Status::Ready => RGB8::new(0, 10, 0),
+            Status::Collecting => RGB8::new(0, 0, 10),
+            Status::Sending => RGB8::new(0, 10, 10),
+            Status::Error => RGB8::new(10, 0, 0),
+            Status::Recovering => RGB8::new(10, 0, 10),
         }
     }
 }
