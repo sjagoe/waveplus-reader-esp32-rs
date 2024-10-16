@@ -40,19 +40,18 @@ pub struct WavePlusMeasurementData {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct WavePlusMeasurement {
+pub struct MeasurementMetadata {
     serial_number: u32,
     address: BLEAddress,
     datetime: PrimitiveDateTime,
-    data: WavePlusMeasurementData,
 }
 
-impl Serialize for WavePlusMeasurement {
+impl Serialize for MeasurementMetadata {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("WavePlusMeasurement", 4)?;
+        let mut state = serializer.serialize_struct("WavePlusMeasurement", 3)?;
 
         let serial = self.serial_number.to_string();
         state.serialize_field("serial_number", &serial)?;
@@ -68,9 +67,14 @@ impl Serialize for WavePlusMeasurement {
             .expect("Failed to format time");
         state.serialize_field("datetime", &datetime)?;
 
-        state.serialize_field("data", &self.data)?;
         state.end()
     }
+}
+
+#[derive(Debug, Serialize, Clone, Copy)]
+pub struct WavePlusMeasurement {
+    metadata: MeasurementMetadata,
+    data: WavePlusMeasurementData,
 }
 
 impl WavePlusMeasurement {
@@ -87,10 +91,13 @@ impl WavePlusMeasurement {
             data.radon_short = None;
         }
         let datetime = get_datetime().expect("Unable to get current date and time");
-        WavePlusMeasurement {
+        let metadata = MeasurementMetadata {
             serial_number,
             address,
             datetime,
+        };
+        WavePlusMeasurement {
+            metadata,
             data,
         }
     }
