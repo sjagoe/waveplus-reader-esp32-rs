@@ -63,7 +63,9 @@ pub fn run(
                 }
 
                 std::thread::sleep(std::time::Duration::from_millis(250));
-                state.with_mode(ExecutionMode::WifiReconnect).wifi_disconnected()
+                state
+                    .with_mode(ExecutionMode::WifiReconnect)
+                    .wifi_disconnected()
             }
             ExecutionMode::WifiReconnect => {
                 warn!(
