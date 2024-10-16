@@ -75,8 +75,8 @@ impl Serialize for WavePlusMeasurement {
 
 impl WavePlusMeasurement {
     pub fn new(
-        serial_number: &u32,
-        address: &BLEAddress,
+        serial_number: u32,
+        address: BLEAddress,
         data: &WavePlusRawMeasurementData,
         include_radon: bool,
     ) -> Self {
@@ -88,8 +88,8 @@ impl WavePlusMeasurement {
         }
         let datetime = get_datetime().expect("Unable to get current date and time");
         WavePlusMeasurement {
-            serial_number: *serial_number,
-            address: *address,
+            serial_number,
+            address,
             datetime,
             data,
         }

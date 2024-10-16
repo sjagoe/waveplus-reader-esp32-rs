@@ -79,7 +79,7 @@ pub fn run(
 
                 if let Some(waveplus) = state.waveplus {
                     warn!("Include radon measurement? {:?}", include_radon);
-                    match read_waveplus(&serial, &waveplus, include_radon) {
+                    match read_waveplus(serial, &waveplus, include_radon) {
                         Ok(measurement) => state
                             .with_mode(ExecutionMode::SendMeasurement)
                             .with_measurement(measurement),

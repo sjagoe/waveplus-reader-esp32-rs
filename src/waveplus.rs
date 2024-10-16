@@ -62,7 +62,7 @@ pub fn get_waveplus(serial_number: &u32) -> Result<BLEAdvertisedDevice> {
 }
 
 pub fn read_waveplus(
-    serial_number: &u32,
+    serial_number: u32,
     waveplus: &BLEAdvertisedDevice,
     include_radon: bool,
 ) -> Result<WavePlusMeasurement> {
@@ -98,7 +98,7 @@ pub fn read_waveplus(
             Ok(value) => {
                 let raw = parse_value(&value)?;
                 let measurement =
-                    WavePlusMeasurement::new(serial_number, &waveplus.addr(), &raw, include_radon);
+                    WavePlusMeasurement::new(serial_number, waveplus.addr(), &raw, include_radon);
                 Ok(measurement)
             }
             Err(_) => Err(anyhow!("Failed to read measurement")),
