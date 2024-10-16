@@ -1,7 +1,6 @@
 use esp32_nimble::BLEAddress;
 use serde::ser::{SerializeStruct, Serializer};
 use serde::{Deserialize, Serialize};
-use std::fmt::Write;
 use time::{format_description, PrimitiveDateTime};
 
 use crate::utils::time::get_datetime;
@@ -43,7 +42,7 @@ pub struct WavePlusMeasurementData {
 #[derive(Debug, Clone, Copy)]
 pub struct WavePlusMeasurement {
     serial_number: u32,
-    address: [u8; 6],
+    address: BLEAddress,
     datetime: PrimitiveDateTime,
     data: WavePlusMeasurementData,
 }
@@ -58,10 +57,7 @@ impl Serialize for WavePlusMeasurement {
         let serial = self.serial_number.to_string();
         state.serialize_field("serial_number", &serial)?;
 
-        let mut address = format!("{:x}", self.address[0]);
-        for &byte in &self.address[1..] {
-            write!(&mut address, ":{:x}", byte).expect("Failed to format bt address");
-        }
+        let address = self.address.to_string();
         state.serialize_field("address", &address)?;
 
         let format = format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]")
@@ -93,7 +89,7 @@ impl WavePlusMeasurement {
         let datetime = get_datetime().expect("Unable to get current date and time");
         WavePlusMeasurement {
             serial_number: *serial_number,
-            address: address.as_le_bytes(),
+            address: *address,
             datetime,
             data,
         }
