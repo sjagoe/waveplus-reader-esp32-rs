@@ -96,10 +96,7 @@ impl WavePlusMeasurement {
             address,
             datetime,
         };
-        WavePlusMeasurement {
-            metadata,
-            data,
-        }
+        WavePlusMeasurement { metadata, data }
     }
 
     pub fn has_radon(&self) -> bool {
