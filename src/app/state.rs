@@ -2,9 +2,12 @@ use time::PrimitiveDateTime;
 
 use crate::rgbled::RGB8;
 use crate::waveplus::measurement::WavePlusMeasurement;
+use esp32_nimble::BLEAdvertisedDevice;
 
 #[derive(Debug, Clone, Copy)]
 pub enum ExecutionMode {
+    Initialize,
+    Reinitialize,
     CollectMeasurement,
     SendMeasurement,
     Wait,
@@ -25,6 +28,8 @@ pub enum Status {
 impl From<ExecutionMode> for Status {
     fn from(mode: ExecutionMode) -> Status {
         match mode {
+            ExecutionMode::Initialize => Status::Initializing,
+            ExecutionMode::Reinitialize => Status::Recovering,
             ExecutionMode::CollectMeasurement => Status::Collecting,
             ExecutionMode::SendMeasurement => Status::Sending,
             ExecutionMode::Wait => Status::Ready,
@@ -54,6 +59,7 @@ pub struct State {
     pub last_run: Option<PrimitiveDateTime>,
     pub measurement: Option<WavePlusMeasurement>,
     pub force_radon_measurement: bool,
+    pub waveplus: Option<BLEAdvertisedDevice>,
 }
 
 impl State {
@@ -89,16 +95,25 @@ impl State {
             ..*self
         }
     }
+
+    pub fn with_waveplus(&self, waveplus: BLEAdvertisedDevice) -> Self {
+        State {
+            waveplus: Some(waveplus),
+            measurement: None,
+            ..*self
+        }
+    }
 }
 
 impl Default for State {
     fn default() -> Self {
         State {
-            mode: ExecutionMode::CollectMeasurement,
+            mode: ExecutionMode::Initialize,
             status: Status::Ready,
             last_run: None,
             measurement: None,
             force_radon_measurement: true,
+            waveplus: None,
         }
     }
 }

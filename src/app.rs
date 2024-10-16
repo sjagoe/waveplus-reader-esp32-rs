@@ -30,12 +30,17 @@ pub fn run(
     server: &str,
     read_interval: u16,
 ) -> Result<()> {
-    let waveplus = get_waveplus(&serial).expect("Unable to get waveplus bt device");
     let mut state: State = State::default();
     loop {
         led.set_pixel(RGB8::from(state.status))?;
         info!("Current state: {:?}", state);
         state = match state.mode {
+            ExecutionMode::Initialize | ExecutionMode::Reinitialize => {
+                let waveplus = get_waveplus(&serial).expect("Unable to get waveplus bt device");
+                state
+                    .with_mode(ExecutionMode::CollectMeasurement)
+                    .with_waveplus(waveplus)
+            }
             ExecutionMode::WifiDisconnect => {
                 warn!(
                     "Wifi connected: {:?}, up: {:?}",
@@ -72,12 +77,20 @@ pub fn run(
                 let include_radon =
                     should_include_radon(state.last_run, current) || state.force_radon_measurement;
 
-                warn!("Include radon measurement? {:?}", include_radon);
-                let measurement = read_waveplus(&serial, &waveplus, include_radon)?;
-
-                state
-                    .with_mode(ExecutionMode::SendMeasurement)
-                    .with_measurement(measurement)
+                if let Some(waveplus) = state.waveplus {
+                    warn!("Include radon measurement? {:?}", include_radon);
+                    match read_waveplus(&serial, &waveplus, include_radon) {
+                        Ok(measurement) => state
+                            .with_mode(ExecutionMode::SendMeasurement)
+                            .with_measurement(measurement),
+                        Err(err) => {
+                            error!("Failed to retrieve data from {:?}: {:?}", waveplus, err);
+                            state.with_mode(ExecutionMode::Reinitialize)
+                        }
+                    }
+                } else {
+                    state.with_mode(ExecutionMode::Reinitialize)
+                }
             }
             ExecutionMode::SendMeasurement => {
                 let current = get_datetime()?;
