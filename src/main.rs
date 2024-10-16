@@ -15,8 +15,8 @@ use esp_idf_svc::sys::{esp, esp_wifi_connect};
 mod app;
 mod http;
 mod rgbled;
-mod time;
 mod waveplus;
+mod utils;
 mod wifi;
 
 use rgbled::{RGB8, WS2812RMT};

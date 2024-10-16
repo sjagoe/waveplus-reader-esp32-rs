@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use time::format_description;
 
-use crate::time::get_datetime;
+use crate::utils::time::get_datetime;
 
 #[derive(Debug, Deserialize)]
 pub struct WavePlusManufacturerInfo {

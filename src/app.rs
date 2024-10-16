@@ -8,7 +8,7 @@ mod state;
 use crate::app::state::*;
 use crate::http::send_measurement;
 use crate::rgbled::{RGB8, WS2812RMT};
-use crate::time::get_datetime;
+use crate::utils::time::get_datetime;
 use crate::waveplus::{get_waveplus, read_waveplus};
 use crate::wifi::wait_for_connected;
 
