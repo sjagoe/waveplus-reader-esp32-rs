@@ -21,11 +21,6 @@ fn parse_value(value: &Vec<u8>) -> Result<WavePlusRawMeasurementData> {
     if value.len() != 20 {
         return Err(anyhow!("Unexpected BLE packet {:?}", value));
     }
-    info!("can read {:?}", value);
-
-    // <BBBBHHHHHHHH
-    // [1, 96, 4, 0, 52, 0, 52, 0, 84, 7, 166, 196, 154, 2, 52, 0, 0, 0, 68, 7]
-
     let raw: WavePlusRawMeasurementData = bincode_options!().deserialize(value).unwrap();
     Ok(raw)
 }
@@ -108,8 +103,6 @@ pub fn read_waveplus(
                     &raw,
                     include_radon,
                 );
-
-                info!("measurement: {:?}", measurement);
                 Ok(measurement)
             }
             Err(_) => Err(anyhow!("Failed to read measurement")),
