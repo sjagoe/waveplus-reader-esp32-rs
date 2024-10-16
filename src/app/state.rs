@@ -58,6 +58,7 @@ impl From<Status> for RGB8 {
 struct Errors {
     wifi_disconnects: u64,
     ble_disconnects: u64,
+    http_errors: u64,
 }
 
 impl Errors {
@@ -71,6 +72,13 @@ impl Errors {
     fn ble_disconnected(&self) -> Self {
         Errors {
             ble_disconnects: self.ble_disconnects + 1,
+            ..*self
+        }
+    }
+
+    fn http_error(&self) -> Self {
+        Errors {
+            http_errors: self.http_errors + 1,
             ..*self
         }
     }
@@ -117,6 +125,13 @@ impl State {
     pub fn ble_disconnected(&self) -> Self {
         State {
             errors: self.errors.ble_disconnected(),
+            ..*self
+        }
+    }
+
+    pub fn http_error(&self) -> Self {
+        State {
+            errors: self.errors.http_error(),
             ..*self
         }
     }

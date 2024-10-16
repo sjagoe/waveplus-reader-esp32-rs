@@ -98,15 +98,15 @@ pub fn run(
             }
             ExecutionMode::SendMeasurement => {
                 let current = get_datetime()?;
-                let (next_mode, force) = if http::send(&state, server).err().is_some() {
-                    (ExecutionMode::WifiDisconnect, state.measurement_has_radon())
+                let newstate = if http::send(&state, server).err().is_some() {
+                    state
+                        .with_mode(ExecutionMode::WifiDisconnect)
+                        .force_radon_measurement(state.measurement_has_radon())
+                        .http_error()
                 } else {
-                    (ExecutionMode::Wait, false)
+                    state.with_mode(ExecutionMode::Wait)
                 };
-                state
-                    .with_mode(next_mode)
-                    .with_last_run(current)
-                    .force_radon_measurement(force)
+                newstate.with_last_run(current)
             }
             ExecutionMode::Wait => {
                 std::thread::sleep(std::time::Duration::from_secs(u64::from(read_interval)));
