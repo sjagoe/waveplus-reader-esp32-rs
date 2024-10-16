@@ -6,7 +6,6 @@ use time::PrimitiveDateTime;
 mod state;
 
 use crate::app::state::*;
-use crate::http::send_measurement;
 use crate::rgbled::{RGB8, WS2812RMT};
 use crate::utils::time::get_datetime;
 use crate::waveplus::{get_waveplus, read_waveplus};
@@ -95,12 +94,11 @@ pub fn run(
             ExecutionMode::SendMeasurement => {
                 let current = get_datetime()?;
                 if let Some(measurement) = state.measurement {
-                    let (next_mode, force) =
-                        if send_measurement(server, &measurement).err().is_some() {
-                            (ExecutionMode::WifiDisconnect, measurement.has_radon())
-                        } else {
-                            (ExecutionMode::Wait, false)
-                        };
+                    let (next_mode, force) = if measurement.send(server).err().is_some() {
+                        (ExecutionMode::WifiDisconnect, measurement.has_radon())
+                    } else {
+                        (ExecutionMode::Wait, false)
+                    };
                     state
                         .with_mode(next_mode)
                         .with_last_run(current)

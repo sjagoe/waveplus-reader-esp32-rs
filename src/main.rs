@@ -13,7 +13,6 @@ use esp_idf_svc::sntp::{EspSntp, SntpConf, SyncStatus};
 use esp_idf_svc::sys::{esp, esp_wifi_connect};
 
 mod app;
-mod http;
 mod rgbled;
 mod utils;
 mod waveplus;
