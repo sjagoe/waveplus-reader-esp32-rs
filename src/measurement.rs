@@ -23,7 +23,7 @@ pub struct WavePlusRawMeasurementData {
     _unknown2: u32,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone, Copy)]
 pub struct WavePlusMeasurementData {
     version: u8,
     humidity: f64,
@@ -43,6 +43,17 @@ pub struct WavePlusMeasurement {
     address: String,
     datetime: Option<String>,
     data: WavePlusMeasurementData,
+}
+
+impl Clone for WavePlusMeasurement {
+    fn clone(&self) -> WavePlusMeasurement {
+        WavePlusMeasurement {
+            serial_number: self.serial_number.clone(),
+            address: self.address.clone(),
+            datetime: self.datetime.clone(),
+            data: self.data.clone(),
+        }
+    }
 }
 
 impl WavePlusMeasurement {

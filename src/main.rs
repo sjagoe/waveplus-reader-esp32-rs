@@ -23,6 +23,7 @@ mod wifi;
 use ble::{get_waveplus, read_waveplus};
 use http::send_measurement;
 use rgbled::{RGB8, WS2812RMT};
+use measurement::WavePlusMeasurement;
 use time::get_datetime;
 use wifi::{connect_wifi, wait_for_connected};
 
@@ -111,7 +112,6 @@ fn main() -> Result<()> {
     let serial: u32 = app_config.waveplus_serial.parse()?;
     let waveplus = get_waveplus(&serial).expect("Unable to get waveplus bt device");
     let mut state: State = State::default();
-    let mut last_run: Option<PrimitiveDateTime> = None;
     loop {
         led.set_pixel(RGB8::from(state.status))?;
         info!("Current state: {:?}", state);
@@ -149,20 +149,31 @@ fn main() -> Result<()> {
             }
             ExecutionMode::CollectMeasurement => {
                 let current = get_datetime()?;
-                let include_radon = should_include_radon(last_run, current);
+                let include_radon = should_include_radon(state.last_run, current);
 
                 warn!("Include radon measurement? {:?}", include_radon);
                 let measurement = read_waveplus(&serial, &waveplus, include_radon)?;
-                last_run = Some(current);
-                led.set_pixel(RGB8::from(Status::Sending))?;
 
-                if send_measurement(app_config.server, &measurement)
-                    .err()
-                    .is_some()
-                {
-                    state.with_mode(ExecutionMode::WifiDisconnect)
+                state
+                    .with_mode(ExecutionMode::SendMeasurement)
+                    .with_measurement(measurement)
+            }
+            ExecutionMode::SendMeasurement => {
+                let current = get_datetime()?;
+                if let Some(measurement) = state.measurement.clone() {
+                    let next_mode = if send_measurement(app_config.server, &measurement)
+                        .err()
+                        .is_some()
+                    {
+                        ExecutionMode::WifiDisconnect
+                    } else {
+                        ExecutionMode::Wait
+                    };
+                    state
+                        .with_mode(next_mode)
+                        .with_last_run(current)
                 } else {
-                    state.with_mode(ExecutionMode::Wait)
+                    state.with_mode(ExecutionMode::CollectMeasurement)
                 }
             }
             ExecutionMode::Wait => {
@@ -178,6 +189,7 @@ fn main() -> Result<()> {
 #[derive(Debug, Clone, Copy)]
 enum ExecutionMode {
     CollectMeasurement,
+    SendMeasurement,
     Wait,
     WifiDisconnect,
     WifiReconnect,
@@ -197,6 +209,7 @@ impl From<ExecutionMode> for Status {
     fn from(mode: ExecutionMode) -> Status {
         match mode {
             ExecutionMode::CollectMeasurement => Status::Collecting,
+            ExecutionMode::SendMeasurement => Status::Sending,
             ExecutionMode::Wait => Status::Ready,
             ExecutionMode::WifiDisconnect => Status::Error,
             ExecutionMode::WifiReconnect => Status::Recovering,
@@ -217,10 +230,12 @@ impl From<Status> for RGB8 {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct State {
     mode: ExecutionMode,
     status: Status,
+    last_run: Option<PrimitiveDateTime>,
+    measurement: Option<WavePlusMeasurement>,
 }
 
 impl State {
@@ -228,6 +243,22 @@ impl State {
         State {
             mode,
             status: Status::from(mode),
+            measurement: None,
+            ..*self
+        }
+    }
+
+    pub fn with_last_run(&self, last_run: PrimitiveDateTime) -> Self {
+        State {
+            last_run: Some(last_run),
+            measurement: None,
+            ..*self
+        }
+    }
+
+    pub fn with_measurement(&self, measurement: WavePlusMeasurement) -> Self {
+        State {
+            measurement: Some(measurement),
             ..*self
         }
     }
@@ -238,6 +269,8 @@ impl Default for State {
         State {
             mode: ExecutionMode::CollectMeasurement,
             status: Status::Ready,
+            last_run: None,
+            measurement: None,
         }
     }
 }
