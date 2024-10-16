@@ -76,7 +76,6 @@ impl State {
     pub fn with_last_run(&self, last_run: PrimitiveDateTime) -> Self {
         State {
             last_run: Some(last_run),
-            measurement: None,
             ..*self
         }
     }
@@ -84,7 +83,6 @@ impl State {
     pub fn force_radon_measurement(&self, force_radon_measurement: bool) -> Self {
         State {
             force_radon_measurement,
-            measurement: None,
             ..*self
         }
     }
@@ -99,7 +97,6 @@ impl State {
     pub fn with_waveplus(&self, waveplus: BLEAdvertisedDevice) -> Self {
         State {
             waveplus: Some(waveplus),
-            measurement: None,
             ..*self
         }
     }
