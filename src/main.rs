@@ -22,8 +22,8 @@ mod wifi;
 
 use ble::{get_waveplus, read_waveplus};
 use http::send_measurement;
-use rgbled::{RGB8, WS2812RMT};
 use measurement::WavePlusMeasurement;
+use rgbled::{RGB8, WS2812RMT};
 use time::get_datetime;
 use wifi::{connect_wifi, wait_for_connected};
 
@@ -149,7 +149,8 @@ fn main() -> Result<()> {
             }
             ExecutionMode::CollectMeasurement => {
                 let current = get_datetime()?;
-                let include_radon = should_include_radon(state.last_run, current);
+                let include_radon =
+                    should_include_radon(state.last_run, current) || state.force_radon_measurement;
 
                 warn!("Include radon measurement? {:?}", include_radon);
                 let measurement = read_waveplus(&serial, &waveplus, include_radon)?;
@@ -161,17 +162,18 @@ fn main() -> Result<()> {
             ExecutionMode::SendMeasurement => {
                 let current = get_datetime()?;
                 if let Some(measurement) = state.measurement.clone() {
-                    let next_mode = if send_measurement(app_config.server, &measurement)
+                    let (next_mode, force) = if send_measurement(app_config.server, &measurement)
                         .err()
                         .is_some()
                     {
-                        ExecutionMode::WifiDisconnect
+                        (ExecutionMode::WifiDisconnect, measurement.has_radon())
                     } else {
-                        ExecutionMode::Wait
+                        (ExecutionMode::Wait, false)
                     };
                     state
                         .with_mode(next_mode)
                         .with_last_run(current)
+                        .force_radon_measurement(force)
                 } else {
                     state.with_mode(ExecutionMode::CollectMeasurement)
                 }
@@ -236,6 +238,7 @@ struct State {
     status: Status,
     last_run: Option<PrimitiveDateTime>,
     measurement: Option<WavePlusMeasurement>,
+    force_radon_measurement: bool,
 }
 
 impl State {
@@ -244,6 +247,7 @@ impl State {
             mode,
             status: Status::from(mode),
             measurement: None,
+            force_radon_measurement: false,
             ..*self
         }
     }
@@ -251,6 +255,14 @@ impl State {
     pub fn with_last_run(&self, last_run: PrimitiveDateTime) -> Self {
         State {
             last_run: Some(last_run),
+            measurement: None,
+            ..*self
+        }
+    }
+
+    pub fn force_radon_measurement(&self, force_radon_measurement: bool) -> Self {
+        State {
+            force_radon_measurement,
             measurement: None,
             ..*self
         }
@@ -271,6 +283,7 @@ impl Default for State {
             status: Status::Ready,
             last_run: None,
             measurement: None,
+            force_radon_measurement: true,
         }
     }
 }

@@ -87,6 +87,10 @@ impl WavePlusMeasurement {
             data,
         }
     }
+
+    pub fn has_radon(&self) -> bool {
+        self.data.radon_short.is_some()
+    }
 }
 
 fn parse_radon(value: u16) -> Option<f64> {
