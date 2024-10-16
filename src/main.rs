@@ -110,7 +110,7 @@ fn main() -> Result<()> {
 }
 
 fn wait_for_sntp(sntp: &EspSntp) {
-    info!("Waiting for sntp sync {:?}", sntp.get_sync_status());
+    info!("Waiting for sntp sync");
     loop {
         std::thread::sleep(std::time::Duration::from_millis(100));
         if sntp.get_sync_status() == SyncStatus::Completed {
