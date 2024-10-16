@@ -1,9 +1,6 @@
 use anyhow::{bail, Result};
 use core::str;
-use embedded_svc::{
-    http::{client::Client, Method},
-    io::Read,
-};
+use embedded_svc::http::{client::Client, Method};
 use esp_idf_svc::http::client::{Configuration, EspHttpConnection};
 
 use crate::waveplus::measurement::WavePlusMeasurement;
