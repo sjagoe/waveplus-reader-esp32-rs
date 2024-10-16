@@ -40,9 +40,9 @@ impl From<Status> for RGB8 {
             Status::Initializing => RGB8::new(50, 50, 0),
             Status::Ready => RGB8::new(0, 50, 0),
             Status::Collecting => RGB8::new(0, 0, 50),
-            Status::Sending => RGB8::new(50, 50, 0),
+            Status::Sending => RGB8::new(0, 50, 50),
             Status::Error => RGB8::new(50, 0, 0),
-            Status::Recovering => RGB8::new(50, 50, 0),
+            Status::Recovering => RGB8::new(50, 0, 50),
         }
     }
 }
