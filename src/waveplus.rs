@@ -6,9 +6,7 @@ use log::*;
 
 pub mod measurement;
 
-use measurement::{
-    WavePlusManufacturerInfo, WavePlusMeasurement, WavePlusRawMeasurementData,
-};
+use measurement::{WavePlusManufacturerInfo, WavePlusMeasurement, WavePlusRawMeasurementData};
 
 macro_rules! bincode_options {
     () => {

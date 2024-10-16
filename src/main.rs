@@ -105,7 +105,13 @@ fn main() -> Result<()> {
     wait_for_sntp(&sntp);
 
     let serial: u32 = app_config.waveplus_serial.parse()?;
-    app::run(&mut wifi, &mut led, serial, app_config.server, app_config.read_interval)
+    app::run(
+        &mut wifi,
+        &mut led,
+        serial,
+        app_config.server,
+        app_config.read_interval,
+    )
 }
 
 fn wait_for_sntp(sntp: &EspSntp) {

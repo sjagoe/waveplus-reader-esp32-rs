@@ -23,7 +23,13 @@ fn should_include_radon(last: Option<PrimitiveDateTime>, current: PrimitiveDateT
     }
 }
 
-pub fn run(wifi: &mut EspWifi, led: &mut WS2812RMT, serial: u32, server: &str, read_interval: u16) -> Result<()> {
+pub fn run(
+    wifi: &mut EspWifi,
+    led: &mut WS2812RMT,
+    serial: u32,
+    server: &str,
+    read_interval: u16,
+) -> Result<()> {
     let waveplus = get_waveplus(&serial).expect("Unable to get waveplus bt device");
     let mut state: State = State::default();
     loop {
@@ -76,14 +82,12 @@ pub fn run(wifi: &mut EspWifi, led: &mut WS2812RMT, serial: u32, server: &str, r
             ExecutionMode::SendMeasurement => {
                 let current = get_datetime()?;
                 if let Some(measurement) = state.measurement.clone() {
-                    let (next_mode, force) = if send_measurement(server, &measurement)
-                        .err()
-                        .is_some()
-                    {
-                        (ExecutionMode::WifiDisconnect, measurement.has_radon())
-                    } else {
-                        (ExecutionMode::Wait, false)
-                    };
+                    let (next_mode, force) =
+                        if send_measurement(server, &measurement).err().is_some() {
+                            (ExecutionMode::WifiDisconnect, measurement.has_radon())
+                        } else {
+                            (ExecutionMode::Wait, false)
+                        };
                     state
                         .with_mode(next_mode)
                         .with_last_run(current)
@@ -93,9 +97,7 @@ pub fn run(wifi: &mut EspWifi, led: &mut WS2812RMT, serial: u32, server: &str, r
                 }
             }
             ExecutionMode::Wait => {
-                std::thread::sleep(std::time::Duration::from_secs(u64::from(
-                    read_interval,
-                )));
+                std::thread::sleep(std::time::Duration::from_secs(u64::from(read_interval)));
                 state.with_mode(ExecutionMode::CollectMeasurement)
             }
         };
