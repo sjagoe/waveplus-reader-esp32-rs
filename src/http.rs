@@ -21,7 +21,7 @@ pub fn send_measurement(url: impl AsRef<str>, measurement: &WavePlusMeasurement)
     let mut client = Client::wrap(connection);
 
     // 2. Open a GET request to `url`
-    let headers = [("accept", "application/json")];
+    let headers = [("content-type", "application/json")];
     let mut request = client.request(Method::Post, url.as_ref(), &headers)?;
     let json = serde_json::to_string(measurement)?;
     request.write(json.as_bytes())?;
@@ -34,44 +34,7 @@ pub fn send_measurement(url: impl AsRef<str>, measurement: &WavePlusMeasurement)
     println!("Response code: {}\n", status);
 
     match status {
-        200..=299 => {
-            // 4. if the status is OK, read response data chunk by chunk into a buffer and print it until done
-            //
-            // NB. see http_client.rs for an explanation of the offset mechanism for handling chunks that are
-            // split in the middle of valid UTF-8 sequences. This case is encountered a lot with the given
-            // example URL.
-            let mut buf = [0_u8; 256];
-            let mut offset = 0;
-            let mut total = 0;
-            let mut reader = response;
-            loop {
-                if let Ok(size) = Read::read(&mut reader, &mut buf[offset..]) {
-                    if size == 0 {
-                        break;
-                    }
-                    total += size;
-                    // 5. try converting the bytes into a Rust (UTF-8) string and print it
-                    let size_plus_offset = size + offset;
-                    match str::from_utf8(&buf[..size_plus_offset]) {
-                        Ok(text) => {
-                            print!("{}", text);
-                            offset = 0;
-                        }
-                        Err(error) => {
-                            let valid_up_to = error.valid_up_to();
-                            unsafe {
-                                print!("{}", str::from_utf8_unchecked(&buf[..valid_up_to]));
-                            }
-                            buf.copy_within(valid_up_to.., 0);
-                            offset = size_plus_offset - valid_up_to;
-                        }
-                    }
-                }
-            }
-            println!("Total: {} bytes", total);
-        }
+        200..=299 => Ok(()),
         _ => bail!("Unexpected response code: {}", status),
     }
-
-    Ok(())
 }
