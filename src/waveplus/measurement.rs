@@ -55,7 +55,7 @@ impl Serialize for MeasurementMetadata {
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("WavePlusMeasurement", 3)?;
+        let mut state = serializer.serialize_struct("MeasurementMetadata", 3)?;
 
         let serial = self.serial_number.to_string();
         state.serialize_field("serial_number", &serial)?;
