@@ -13,11 +13,11 @@ use esp_idf_svc::sntp::{EspSntp, SntpConf, SyncStatus};
 use esp_idf_svc::sys::{esp, esp_wifi_connect};
 
 mod app;
-mod ble;
 mod http;
 mod measurement;
 mod rgbled;
 mod time;
+mod waveplus;
 mod wifi;
 
 use rgbled::{RGB8, WS2812RMT};

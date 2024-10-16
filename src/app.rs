@@ -5,12 +5,12 @@ use time::PrimitiveDateTime;
 
 mod state;
 
-use crate::ble::{get_waveplus, read_waveplus};
+use crate::app::state::*;
 use crate::http::send_measurement;
 use crate::rgbled::{RGB8, WS2812RMT};
 use crate::time::get_datetime;
+use crate::waveplus::{get_waveplus, read_waveplus};
 use crate::wifi::wait_for_connected;
-use crate::app::state::*;
 
 pub use crate::app::state::Status;
 
