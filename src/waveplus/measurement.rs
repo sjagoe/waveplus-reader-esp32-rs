@@ -1,5 +1,8 @@
+use esp32_nimble::BLEAddress;
+use serde::ser::{SerializeStruct, Serializer};
 use serde::{Deserialize, Serialize};
-use time::format_description;
+use std::fmt::Write;
+use time::{format_description, PrimitiveDateTime};
 
 use crate::utils::time::get_datetime;
 
@@ -37,52 +40,60 @@ pub struct WavePlusMeasurementData {
     voc: f64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Copy)]
 pub struct WavePlusMeasurement {
-    serial_number: String,
-    address: String,
-    datetime: Option<String>,
+    serial_number: u32,
+    address: [u8; 6],
+    datetime: PrimitiveDateTime,
     data: WavePlusMeasurementData,
 }
 
-impl Clone for WavePlusMeasurement {
-    fn clone(&self) -> WavePlusMeasurement {
-        WavePlusMeasurement {
-            serial_number: self.serial_number.clone(),
-            address: self.address.clone(),
-            datetime: self.datetime.clone(),
-            data: self.data,
+impl Serialize for WavePlusMeasurement {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("WavePlusMeasurement", 4)?;
+
+        let serial = self.serial_number.to_string();
+        state.serialize_field("serial_number", &serial)?;
+
+        let mut address = format!("{:x}", self.address[0]);
+        for &byte in &self.address[1..] {
+            write!(&mut address, ":{:x}", byte).expect("Failed to format bt address");
         }
+        state.serialize_field("address", &address)?;
+
+        let format = format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]")
+            .expect("Failed to format time");
+        let datetime = self
+            .datetime
+            .format(&format)
+            .expect("Failed to format time");
+        state.serialize_field("datetime", &datetime)?;
+
+        state.serialize_field("data", &self.data)?;
+        state.end()
     }
 }
 
 impl WavePlusMeasurement {
     pub fn new(
         serial_number: &u32,
-        address: &str,
+        address: &BLEAddress,
         data: &WavePlusRawMeasurementData,
         include_radon: bool,
     ) -> Self {
-        let datetime: Option<String> =
-            match format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]") {
-                Ok(format) => match get_datetime() {
-                    Ok(dt) => match dt.format(&format) {
-                        Ok(s) => Some(s),
-                        Err(_) => None,
-                    },
-                    Err(_) => None,
-                },
-                Err(_) => None,
-            };
         let mut data = WavePlusMeasurementData::from(data);
         if !include_radon {
             log::warn!("Not returning radon measurement");
             data.radon_long = None;
             data.radon_short = None;
         }
+        let datetime = get_datetime().expect("Unable to get current date and time");
         WavePlusMeasurement {
-            serial_number: serial_number.to_string(),
-            address: address.to_string(),
+            serial_number: *serial_number,
+            address: address.as_le_bytes(),
             datetime,
             data,
         }

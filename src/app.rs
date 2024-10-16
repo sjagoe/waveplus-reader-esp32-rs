@@ -94,7 +94,7 @@ pub fn run(
             }
             ExecutionMode::SendMeasurement => {
                 let current = get_datetime()?;
-                if let Some(measurement) = state.measurement.clone() {
+                if let Some(measurement) = state.measurement {
                     let (next_mode, force) =
                         if send_measurement(server, &measurement).err().is_some() {
                             (ExecutionMode::WifiDisconnect, measurement.has_radon())

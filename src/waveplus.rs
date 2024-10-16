@@ -97,12 +97,8 @@ pub fn read_waveplus(
         match raw_value {
             Ok(value) => {
                 let raw = parse_value(&value)?;
-                let measurement = WavePlusMeasurement::new(
-                    serial_number,
-                    &waveplus.addr().to_string(),
-                    &raw,
-                    include_radon,
-                );
+                let measurement =
+                    WavePlusMeasurement::new(serial_number, &waveplus.addr(), &raw, include_radon);
                 Ok(measurement)
             }
             Err(_) => Err(anyhow!("Failed to read measurement")),
