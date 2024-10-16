@@ -4,7 +4,9 @@ use esp32_nimble::{uuid128, BLEAdvertisedDevice, BLEClient, BLEDevice, BLEScan};
 use esp_idf_svc::hal::task::block_on;
 use log::*;
 
-use crate::measurement::{
+pub mod measurement;
+
+use measurement::{
     WavePlusManufacturerInfo, WavePlusMeasurement, WavePlusRawMeasurementData,
 };
 

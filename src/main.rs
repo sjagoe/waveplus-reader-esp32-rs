@@ -14,7 +14,6 @@ use esp_idf_svc::sys::{esp, esp_wifi_connect};
 
 mod app;
 mod http;
-mod measurement;
 mod rgbled;
 mod time;
 mod waveplus;

@@ -6,7 +6,7 @@ use embedded_svc::{
 };
 use esp_idf_svc::http::client::{Configuration, EspHttpConnection};
 
-use crate::measurement::WavePlusMeasurement;
+use crate::waveplus::measurement::WavePlusMeasurement;
 
 pub fn send_measurement(url: impl AsRef<str>, measurement: &WavePlusMeasurement) -> Result<()> {
     // 1. Create a new EspHttpClient. (Check documentation)
