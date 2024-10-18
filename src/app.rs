@@ -1,4 +1,5 @@
 use anyhow::Result;
+use esp_idf_svc::hal::delay::FreeRtos;
 use esp_idf_svc::wifi::EspWifi;
 use log::*;
 use time::PrimitiveDateTime;
@@ -62,7 +63,7 @@ pub fn run(
                     }
                 }
 
-                std::thread::sleep(std::time::Duration::from_millis(250));
+                FreeRtos::delay_ms(250);
                 state
                     .with_mode(ExecutionMode::WifiReconnect)
                     .wifi_disconnected()
@@ -111,7 +112,8 @@ pub fn run(
                 newstate.with_last_run(current)
             }
             ExecutionMode::Wait => {
-                std::thread::sleep(std::time::Duration::from_secs(u64::from(read_interval)));
+                let delay_ms = u32::from(read_interval) * 1000;
+                FreeRtos::delay_ms(delay_ms);
                 state.with_mode(ExecutionMode::CollectMeasurement)
             }
         };

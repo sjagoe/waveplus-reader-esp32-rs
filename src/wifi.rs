@@ -1,6 +1,9 @@
 use anyhow::Result;
-use esp_idf_svc::hal::modem::WifiModemPeripheral;
-use esp_idf_svc::hal::peripheral::Peripheral;
+use esp_idf_svc::hal::{
+    delay::FreeRtos,
+    modem::WifiModemPeripheral,
+    peripheral::Peripheral,
+};
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
@@ -47,7 +50,7 @@ pub fn connect_wifi<'d>(
 
 pub fn wait_for_connected(wifi: &EspWifi) -> Result<()> {
     loop {
-        std::thread::sleep(std::time::Duration::from_millis(250));
+        FreeRtos::delay_ms(250);
         let connected = wifi.is_up()?;
         if connected {
             break;
