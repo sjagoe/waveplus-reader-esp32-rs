@@ -1,9 +1,5 @@
 use anyhow::Result;
-use esp_idf_svc::hal::{
-    delay::FreeRtos,
-    modem::WifiModemPeripheral,
-    peripheral::Peripheral,
-};
+use esp_idf_svc::hal::{delay::FreeRtos, modem::WifiModemPeripheral, peripheral::Peripheral};
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
